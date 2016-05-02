@@ -44,23 +44,24 @@ int main() {
 //		std::cout << exact[i].size() << " " << cds.estimate(i) << std::endl;
 //	}
 
-	string folder = "D:\\dataset\\Gowalla\\Modified\\";
-	string ifile = folder + "Gowalla_totalCheckins.csv";
-	string ofile = folder + "Gowalla";
+	string folder = "D:\\dataset\\new\\foursquare\\LBSNData\\";
+	string ifile = folder + "checkins.csv";
+	string ofile = folder + "FourSquare";
 
 	int bucket = 8;
-	int window = 5;
+	int window = 1;
 	int k = 100;
 	int minFreq = 100;
 	LocationInfluence li(bucket, ifile, ofile);
 	bool isforward = true;
-	//li.topKwithoutFrequency(window, k);
-	li.ParseApprox(window, isforward);
-	//li.ParseExact(window, isforward);
-	std::this_thread::sleep_for(std::chrono::seconds(100));
-	li.topK(minFreq, k);
+	li.topKwithoutFrequency(window, k);
+	//li.FindInflunceApprox(window, isforward);
+	//li.FindInflunceWeigthed(window,isforward);
+	//li.FindInflunceExact(window, isforward);
+	//std::this_thread::sleep_for(std::chrono::seconds(100));
+	//li.topK(minFreq, k);
 	/*
-	 li.ParseApprox(window, isforward);
+	 li.FindInflunceApprox(window, isforward);
 	 li.clean();
 	 std::this_thread::sleep_for(std::chrono::seconds(100));
 	 li.queryAll();
