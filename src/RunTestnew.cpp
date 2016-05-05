@@ -22,39 +22,27 @@ using namespace hll;
 using namespace lif;
 
 int main() {
-//	CountDistinctSketch cds(0.01, 0.99, 7);
-//	vector<set<string> > exact;
-//	const char *ar_str[] = { "hello", "some", "one", "hello", "alice", "one",
-//			"lady", "let", "us", "lady", "alice", "in", "wonderland", "us",
-//			"lady", "lady", "some", "hello", "none", "pie" };
-//	string temp = "a";
-
-//	for (int i = 0; i < 100; i++) {
-////		set<string> s;
-//		for (int j = 0; j < 10; j++) {
-
-//			temp = ar_str[rand() % 20];
-
-//			s.insert(temp);
-//			cds.update(i, temp);
-//		}
-//		exact.push_back(s);
-//	}
-//	for (int i = 0; i < 100; i++) {
-//		std::cout << exact[i].size() << " " << cds.estimate(i) << std::endl;
-//	}
-
-	string folder = "D:\\dataset\\new\\foursquare\\LBSNData\\";
+string file="foursquare";
+	//string file = "Gowalla";
+//string file="foursquare";
+	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 	string ifile = folder + "checkins.csv";
-	string ofile = folder + "FourSquare";
+	string ofile = folder + file;
 
+	int window = 1000; //hours
 	int bucket = 8;
-	int window = 1;
 	int k = 100;
-	int minFreq = 100;
+	int minFreq = 10;
 	LocationInfluence li(bucket, ifile, ofile);
 	bool isforward = true;
-	li.topKwithoutFrequency(window, k);
+
+	// To test accuracy
+
+	li.FindInflunceExactUnitFreq(window, isforward, true);
+	//li.FindInflunceApproxUnitFreq(window, isforward, true, false);
+//****************************************//
+	//li.topKwithoutFrequency(window, k);
+	//li.FindInflunceApproxUnitFreqBackward(window,k,false);
 	//li.FindInflunceApprox(window, isforward);
 	//li.FindInflunceWeigthed(window,isforward);
 	//li.FindInflunceExact(window, isforward);
@@ -68,3 +56,4 @@ int main() {
 	 */
 	return 0;
 }
+
