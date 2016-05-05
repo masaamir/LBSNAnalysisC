@@ -22,14 +22,14 @@ using namespace hll;
 using namespace lif;
 
 int main() {
-string file="foursquare";
-	//string file = "Gowalla";
 //string file="foursquare";
+	string file = "Gowalla";
+//string file="BrightKi";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 	string ifile = folder + "checkins.csv";
 	string ofile = folder + file;
 
-	int window = 1000; //hours
+	int window = 100; //hours
 	int bucket = 8;
 	int k = 100;
 	int minFreq = 10;
@@ -38,11 +38,11 @@ string file="foursquare";
 
 	// To test accuracy
 
-	li.FindInflunceExactUnitFreq(window, isforward, true);
-	//li.FindInflunceApproxUnitFreq(window, isforward, true, false);
+//	li.FindInflunceExactUnitFreq(window, isforward, true);
+	//li.FindInflunceApproxUnitFreq(window, isforward, false, false);
 //****************************************//
 	//li.topKwithoutFrequency(window, k);
-	//li.FindInflunceApproxUnitFreqBackward(window,k,false);
+	li.FindInflunceApproxUnitFreqBackward(window,k,true);
 	//li.FindInflunceApprox(window, isforward);
 	//li.FindInflunceWeigthed(window,isforward);
 	//li.FindInflunceExact(window, isforward);

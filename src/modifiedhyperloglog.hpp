@@ -179,8 +179,8 @@ public:
 	 *
 	 * @exception std::invalid_argument number of registers doesn't match.
 	 */
-	void merge(const ModifiedHyperLogLog &other, long time,
-			 long window) throw (std::invalid_argument) {
+	void merge(const ModifiedHyperLogLog &other, long time, long window)
+			throw (std::invalid_argument) {
 		if (m_ != other.m_) {
 			std::stringstream ss;
 			ss << "number of registers doesn't match: " << m_ << " != "
@@ -199,6 +199,24 @@ public:
 			}
 		}
 
+	}
+
+	void cleanup(long time, long window) {
+		for (uint32_t i = 0; i < m_; i++) {
+			vector<data> newlist;
+
+			for (uint32_t j = 0; j < M_[i].size(); j++) {
+
+				if (M_[i][j].time - time <= window) {
+					data newdata;
+					newdata.time=M_[i][j].time;
+					newdata.value=M_[i][j].value;
+					newlist.push_back(newdata);
+				}
+
+			}
+			M_[i]=newlist;
+		}
 	}
 	/**
 	 * Estimates cardinality value.

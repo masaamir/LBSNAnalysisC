@@ -66,6 +66,7 @@ public:
 	map<string, map<int, long> > userSummary;
 	map<int, HyperLogLog> compactLocationSummary;
 	map<int, set<int>> exactCompactLocationSummary;
+	map<string, ModifiedHyperLogLog > compactUsrSummary;
 	uint8_t numberofbuckets;
 	string datafile;
 	string outfile;
@@ -192,8 +193,7 @@ public:
 		vector<edge> data;
 		ifstream infile(datafile.c_str());
 		edge tempEdge;
-		map<int, ModifiedHyperLogLog> locSummary;
-		map<string, ModifiedHyperLogLog > usrSummary;
+		map<string, ModifiedHyperLogLog> locSummary;
 
 		std::cout << datafile << std::endl;
 		string line;
@@ -212,9 +212,9 @@ public:
 		sort(data.begin(), data.end());
 		int datasize = data.size();
 		std::cout << "read and sorted data " << datasize << " in "
-		<< timer.LiveElapsedMilliseconds() << std::endl;
+		<< timer.LiveElapsedSeconds() << std::endl;
 		timer.Start();
-		int locationid;
+
 		long checkintime;
 		string userid;
 		timer.Start();
@@ -225,34 +225,49 @@ public:
 			ModifiedHyperLogLog newloc(numberofbuckets);
 
 			userid = data[i].user;
-			locationid = data[i].location;
+
 			checkintime = data[i].checkin;
-			srcLoc=to_string(locationid);
+			srcLoc=to_string(data[i].location);
 
-			if (usrSummary.find(userid) == usrSummary.end()) {
+			if (compactUsrSummary.find(userid) != compactUsrSummary.end()) {
 
-				newuser.add(srcLoc.c_str(),srcLoc.length(),checkintime);
+				newuser=compactUsrSummary[userid];
+				if(locSummary.find(srcLoc)==locSummary.end()) {
 
-				usrSummary[userid]=newuser;
-
-			} else {
-				newuser=usrSummary[userid];
-				if(locSummary.find(locationid)==locSummary.end()) {
-
-					locSummary[locationid]=newloc;
-				} else {
-					newloc=locSummary[locationid];
-					newloc.merge(newuser,checkintime,window);
+					locSummary[srcLoc]=newloc;
 				}
+				newloc=locSummary[srcLoc];
+				newloc.merge(newuser,checkintime,window);
+				locSummary[srcLoc]=newloc;
 
 			}
+			newuser.add(srcLoc.c_str(),srcLoc.length(),checkintime);
+
+			compactUsrSummary[userid]=newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
+				std::cout << i << " " << compactUsrSummary.size() << std::endl;
+				cleanupApprox(checkintime,window);
 			}
 		}
 		std::cout << "parsed in "
-				<< timer.LiveElapsedMilliseconds() << std::endl;
+		<< timer.LiveElapsedSeconds() << std::endl;
+		if(write) {
+			ofstream result;
+			stringstream resultfile;
+			resultfile << outfile << "backUnit_w" << window << ".csv";
+
+			result.open(resultfile.str().c_str());
+
+			typedef std::map<string, ModifiedHyperLogLog>::iterator nodeit;
+			for (nodeit iterator = locSummary.begin();
+					iterator != locSummary.end(); iterator++) {
+				result << iterator->first << ","<< iterator->second.estimate()<<"\n";
+
+			}
+			result.close();
+		}
+
 	}
 	void FindInflunceApproxUnitFreq(int wp, int k,bool write,bool find) {
 		long window = wp * 60 * 60;
@@ -790,6 +805,33 @@ private:
 		//	userSummary.erase(removelist[i]);
 		//}
 	}
+	void cleanupApprox (long checkintime, long window) {
+
+		map<string,ModifiedHyperLogLog > newuserSummary;
+		ModifiedHyperLogLog newlist;
+		long diff;
+		typedef std::map<string, ModifiedHyperLogLog>::iterator it1;
+
+		for (it1 it = compactUsrSummary.begin(); it != compactUsrSummary.end(); it++) {
+			newlist=it->second;
+			newlist.cleanup(checkintime,window);
+
+
+			if (newlist.estimate() > 0) {
+				newuserSummary[it->first] = newlist;
+			}
+
+
+		}
+
+		//delete[] pt;
+		//userSummary.clear();
+		compactUsrSummary = newuserSummary;
+		//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
+		//	userSummary.erase(removelist[i]);
+		//}
+	}
+
 	void findseed(string keyfile, int seedc) {
 
 		node nd;
