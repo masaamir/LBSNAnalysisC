@@ -709,10 +709,12 @@ public:
 		typedef std::map<int, map<int, HyperLogLog>>::iterator locationit;
 		typedef std::map<int, HyperLogLog>::iterator resit;
 		int count = 0;
-		for (locationit iterator = locationSummary.begin();
+		locationit iterator;
+		resit it;
+		for ( iterator = locationSummary.begin();
 				iterator != locationSummary.end(); iterator++) {
 
-			for (resit it = iterator->second.begin();
+			for ( it = iterator->second.begin();
 					it != iterator->second.end(); it++) {
 				if (it->second.estimate() > freq) {
 					count++;
@@ -720,6 +722,7 @@ public:
 
 			}
 			rfile << iterator->first << "," << count << "\n";
+			rfile.flush();
 			count = 0;
 		}
 		rfile.close();
@@ -734,11 +737,13 @@ public:
 		typedef std::map<int, map<int, HyperLogLog>>::iterator locationit;
 		typedef std::map<int, HyperLogLog>::iterator resit;
 		int count = 0;
-		for (locationit iterator = locationSummary.begin();
+		locationit iterator;
+		resit it;
+		for ( iterator = locationSummary.begin();
 				iterator != locationSummary.end(); iterator++) {
 			HyperLogLog hll(numberofbuckets);
 
-			for (resit it = iterator->second.begin();
+			for ( it = iterator->second.begin();
 					it != iterator->second.end(); it++) {
 				if (it->second.estimate() > freq) {
 					hll.add(to_string(it->first).c_str(),
@@ -753,9 +758,7 @@ public:
 
 			count = 0;
 		}
-		map<int, map<int, HyperLogLog>> *pt;
-		pt=&locationSummary;
-		//delete pt;
+
 		std::cout << "finished creating compact list " << timer.LiveElapsedSeconds()
 		<< std::endl;
 		timer.Start();
