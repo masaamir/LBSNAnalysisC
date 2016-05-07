@@ -67,6 +67,7 @@ public:
 	map<int, HyperLogLog> compactLocationSummary;
 	map<int, set<int>> exactCompactLocationSummary;
 	map<string, ModifiedHyperLogLog > compactUsrSummary;
+	map<string,HyperLogLog> friendmap;
 	uint8_t numberofbuckets;
 	string datafile;
 	string outfile;
@@ -77,6 +78,26 @@ public:
 		numberofbuckets = b;
 		datafile = file;
 		outfile = ofile;
+	}
+	void generateFriendshipData(string file) {
+		ifstream infile(file.c_str());
+		string line;
+		vector<string> temp;
+		Platform::Timer timer;
+		timer.Start();
+
+		while (infile >> line) {
+
+			temp = Tools::Split(line, ',');
+			if (friendmap.find(temp[0]) != friendmap.end()) {
+				friendmap[temp[0]].add(temp[1].c_str(),temp[1].length());
+			} else {
+				HyperLogLog newhll(numberofbuckets);
+				newhll.add(temp[1].c_str(),temp[1].length());
+				friendmap[temp[0]]=newhll;
+			}
+		}
+		std::cout << "build friendship network : "<<friendmap.size()<<" "<< timer.ElapsedMilliseconds()<<std::endl;
 	}
 	void FindInflunceExactUnitFreq(int wp, bool isforward,bool write) {
 		window = 0;
@@ -369,7 +390,7 @@ public:
 			findseed(outfile, k);
 		}
 	}
-	void FindInflunceWeigthed(int wp,bool isforward) {
+	void FindInflunceWeigthed(int wp,bool isforward,bool withFriend) {
 
 		window = 0;
 
@@ -449,14 +470,30 @@ public:
 
 							weigthedLocationSummary[srcLoc] = newlocation;
 						}
+						if(withFriend) {
+							if(friendmap.find(userid)!=friendmap.end()) {
+								weigthedLocationSummary[srcLoc].visitor.merge(friendmap[userid]);
+							}
+						}
 						ithll = weigthedLocationSummary[srcLoc].influenceset.find(destLoc);
 						if (ithll == weigthedLocationSummary[srcLoc].influenceset.end()) {
 							HyperLogLog hll(numberofbuckets);
 							hll.add(userid.c_str(), userid.size());
+							if(withFriend) {
+								if(friendmap.find(userid)!=friendmap.end()) {
+									hll.merge(friendmap[userid]);
+								}
+							}
 							weigthedLocationSummary[srcLoc].influenceset[destLoc] = hll;
 						} else {
 							weigthedLocationSummary[srcLoc].influenceset[destLoc].add(userid.c_str(),
 									userid.size());
+							if(withFriend) {
+								if(friendmap.find(userid)!=friendmap.end()) {
+									weigthedLocationSummary[srcLoc].influenceset[destLoc]
+									.merge(friendmap[userid]);
+								}
+							}
 						}
 
 						weigthedLocationSummary[srcLoc].visitor.add(userid.c_str(),userid.length());
@@ -472,7 +509,7 @@ public:
 
 			if (i % 100000 == 0) {
 				std::cout << i << " " << userSummary.size() << std::endl;
-				cleanup(checkintime, window, isforward);
+				//cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop
 
@@ -729,6 +766,37 @@ public:
 		std::cout << "finished querying " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
+	void queryWeighted(int freq) {
+		Platform::Timer timer;
+		timer.Start();
+		ofstream rfile;
+		outfile = outfile + "_" + to_string(freq) + ".result";
+		rfile.open(outfile.c_str());
+		typedef std::map<int, locationnode>::iterator locationit;
+		typedef std::map<int, HyperLogLog>::iterator resit;
+		int count = 0;
+		locationit iterator;
+		resit it;
+		locationnode lntemp;
+		for ( iterator = weigthedLocationSummary.begin();
+				iterator != weigthedLocationSummary.end(); iterator++) {
+			lntemp=iterator->second;
+			for ( it = lntemp.influenceset.begin();
+					it != lntemp.influenceset.end(); it++) {
+				if (it->second.estimate() > freq) {
+					count++;
+				}
+
+			}
+			rfile << iterator->first << "," << count << "\n";
+			rfile.flush();
+			count = 0;
+		}
+		rfile.close();
+		std::cout << "finished querying " << timer.LiveElapsedSeconds()
+		<< std::endl;
+	}
+
 	void topK(int freq, int k) {
 		Platform::Timer timer;
 		timer.Start();
