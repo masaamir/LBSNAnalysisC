@@ -27,12 +27,12 @@ int main(int argc, char *argv[]) {
 //string file="foursquare";
 	string file = "Gowalla";
 //string file="BrightKi";
-	string mem = exec("systeminfo | find \"Virtual Memory: In Use:\"");
-	std::cout << mem << std::endl;
+
+
 	int window = 100; //hour
 	int bucket = 8;
 	int k = 100;
-	int minFreq = 10;
+	int minFreq = 1;
 	bool withFriend = false;
 	bool isforward = true;
 	string forward = "";
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 		window = stoi(argv[2]); //hours
 		file = argv[1];
 		k = 100;
-		minFreq = 10;
+		minFreq = 1;
 		string extra;
 		std::cout << file << " @ " << argv[2] << std::endl;
 		for (int i = 3; i < argc; i++) {
@@ -82,14 +82,12 @@ int main(int argc, char *argv[]) {
 	if (withFriend) {
 		li.generateFriendshipData(friendfile);
 	}
-	//li.FindInflunceApprox(window, isforward);
-//	li.queryAll(minFreq);
-	li.FindInflunceWeigthed(window, isforward, withFriend);
-	mem = exec("systeminfo | find \"Virtual Memory: In Use:\"");
-	std::cout << mem << std::endl;
-	li.queryWeighted(minFreq);
-	mem = exec("systeminfo | find \"Virtual Memory: In Use:\"");
-	std::cout << mem << std::endl;
+	li.FindInflunceApprox(window, isforward);
+	li.queryAll(minFreq);
+//	li.FindInflunceWeigthed(window, isforward, withFriend);
+
+//	li.queryWeighted(minFreq);
+
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
 	//li.topK(minFreq, k);

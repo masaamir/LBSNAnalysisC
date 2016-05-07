@@ -183,7 +183,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
+				//std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop
@@ -363,7 +363,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
+			//	std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
@@ -550,15 +550,16 @@ public:
 		//	std::cout << "read and sorted data " << datasize << " in "
 		//<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
-
+		std::cout <<data[0].checkin<< std::endl;
+		std::cout <<data[1].checkin<< std::endl;
 		timer.Start();
 		int locationid;
 		long checkintime;
 		string userid;
 		long diff;
 		int srcLoc, destLoc;
-		map<int, long> newuser;
-		map<int, HyperLogLog> newlochll;
+
+
 		typedef std::map<int, long>::iterator it_type;
 		for (int i = 0; i < datasize - 1; i++) {
 			userid = data[i].user;
@@ -567,7 +568,8 @@ public:
 
 			//	locationSummary[locationid];
 
-			newuser.clear();
+			map<int, long> newuser;
+			map<int, HyperLogLog> newlochll;
 
 			if (userSummary.find(userid) != userSummary.end()) {
 
@@ -582,7 +584,7 @@ public:
 						destLoc = it->first;
 						diff = it->second - checkintime;
 					}
-					if ((diff) < window) {
+					if (diff < window) {
 						newuser[it->first] = it->second;
 						if (locationSummary.find(srcLoc)
 								== locationSummary.end()) {
@@ -741,7 +743,7 @@ public:
 		Platform::Timer timer;
 		timer.Start();
 		ofstream rfile;
-		outfile = outfile + "_" + to_string(freq) + ".result";
+		outfile = outfile + "_" + to_string(freq) + ".csv";
 		rfile.open(outfile.c_str());
 		typedef std::map<int, map<int, HyperLogLog>>::iterator locationit;
 		typedef std::map<int, HyperLogLog>::iterator resit;
