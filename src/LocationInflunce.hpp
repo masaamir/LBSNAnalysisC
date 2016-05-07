@@ -510,8 +510,8 @@ public:
 			sort(data.begin(), data.end());
 		}
 		int datasize = data.size();
-		std::cout << "read and sorted data " << datasize << " in "
-		<< timer.LiveElapsedMilliseconds() << std::endl;
+		//	std::cout << "read and sorted data " << datasize << " in "
+		//<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
 
 		timer.Start();
@@ -573,7 +573,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
+				//std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop
@@ -696,7 +696,7 @@ public:
 
 		}
 		rfile.close();
-		std::cout << "finished querying " << timer.LiveElapsedMilliseconds()
+		std::cout << "finished querying " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
 
@@ -723,7 +723,7 @@ public:
 			count = 0;
 		}
 		rfile.close();
-		std::cout << "finished parsing " << timer.LiveElapsedMilliseconds()
+		std::cout << "finished querying " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
 	void topK(int freq, int k) {
@@ -816,11 +816,9 @@ private:
 			newlist=it->second;
 			newlist.cleanup(checkintime,window);
 
-
 			if (newlist.estimate() > 0) {
 				newuserSummary[it->first] = newlist;
 			}
-
 
 		}
 
