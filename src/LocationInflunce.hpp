@@ -66,6 +66,7 @@ public:
 	map<string, map<int, long> > userSummary;
 	map<int, HyperLogLog> compactLocationSummary;
 	map<int, set<int>> exactCompactLocationSummary;
+	map<int, HyperLogLog> naiveSummary;
 	map<string, ModifiedHyperLogLog > compactUsrSummary;
 	map<string,HyperLogLog> friendmap;
 	string datafolder;
@@ -208,8 +209,89 @@ public:
 		}
 
 	}
+	void findtopKusingNaive(string keyfile, int seedc) {
+		vector<string> templine;
+		ifstream infile(datafile.c_str());
+		edge tempEdge;
+		vector<edge> data;
+		string line,user;
+		int location;
+		vector<int> seedlist(seedc);
+		set<int> selectednodes;
+		while (infile >> line) {
 
-	void FindInflunceApproxUnitFreqBackward(int wp, int k,bool write) {
+			templine = Tools::Split(line, ',');
+
+			user = templine[0];
+			location = atoi(templine[1].c_str());
+			if(naiveSummary.find(location)==naiveSummary.end()) {
+				HyperLogLog newusers(numberofbuckets);
+				naiveSummary[location]=newusers;
+			}
+			naiveSummary[location].add(user.c_str(),user.length());
+		}
+		typedef std::map<int, HyperLogLog>::iterator nodeit;
+
+		vector<node> nodelist;
+		for (nodeit iterator = naiveSummary.begin();
+				iterator != naiveSummary.end(); iterator++) {
+			node nd;
+			nd.nodeid=iterator->first;
+			nd.nodeset=iterator->second;
+			nd.estimate=nd.nodeset.estimate();
+			nodelist.push_back(nd);
+
+		}
+		sort(nodelist.begin(), nodelist.end(), sortByEstimate);
+		seedlist[0] = nodelist[0].nodeid;
+		HyperLogLog seed(numberofbuckets);
+
+		double max = -1.0, tempsize = 0.0;
+
+		int newseed;
+		HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(
+				numberofbuckets), newinf(numberofbuckets);
+		is = nodelist[0].nodeset;
+		selectednodes.insert(nodelist[0].nodeid);
+
+		for (int i = 1; i < seedc; i++) {
+
+			max = 0.0;
+
+			for (node &n : nodelist) {
+				if (selectednodes.find(n.nodeid) == selectednodes.end()) {
+					if (n.nodeset.estimate() < max) {
+						break;
+					}
+					temp = is;
+					temp.merge(n.nodeset);
+					tempsize = temp.estimate();
+					if (tempsize > max) {
+						max = tempsize;
+						maxinf = temp;
+						newseed = n.nodeid;
+						newinf = n.nodeset;
+					}
+				}
+			}
+			seedlist[i] = newseed;
+			selectednodes.insert(newseed);
+			is.merge(newinf);
+		}
+
+		ofstream result;
+		stringstream resultfile;
+		resultfile << keyfile << "_naive" << seedc << ".keys";
+		std::cout << resultfile.str() << endl;
+		result.open(resultfile.str().c_str());
+		for (int n : seedlist) {
+			result << n << "\n";
+		}
+
+		result.close();
+
+	}
+	void FindInflunceApproxUnitFreqBackward(int wp, bool write) {
 		long window = wp * 60 * 60;
 
 		vector<string> temp;
@@ -736,7 +818,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
+			//	std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop
@@ -793,6 +875,47 @@ public:
 		std::cout << "finished querying " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
+	void queryExact(int freq) {
+		Platform::Timer timer;
+		timer.Start();
+		typedef std::map<int, map<int, set<string>>>::iterator locationit;
+		typedef std::map<int, set<string>>::iterator resit;
+		int count = 0;
+		locationit iterator;
+		resit it;
+
+		for ( iterator = exactLocationSummary.begin();
+				iterator != exactLocationSummary.end(); iterator++) {
+			set<int> locations;
+			for ( it = iterator->second.begin();
+					it != iterator->second.end(); it++) {
+				if (it->second.size() > freq) {
+					locations.insert(it->first);
+					count++;
+
+				}
+
+			}
+			exactCompactLocationSummary[iterator->first]=locations;
+			count = 0;
+		}
+
+	}
+
+	void queryInflunceSet(string file,int k,string outputfile) {
+
+		vector<int> keys=readKeys(file,k);
+		set<int> result;
+		for(int temp:keys) {
+			result.insert(exactCompactLocationSummary[temp].begin(),exactCompactLocationSummary[temp].end());
+		}
+		vector<string> data;
+		for(int t:result) {
+			data.push_back(to_string(t)+"\n");
+		}
+		writeData(data,outputfile);
+
+	}
 	void queryWeighted(int freq) {
 		Platform::Timer timer;
 		timer.Start();
@@ -824,7 +947,7 @@ public:
 		<< std::endl;
 	}
 
-	void topK(int freq, int k) {
+	void findseed(int freq, int k) {
 		Platform::Timer timer;
 		timer.Start();
 		ofstream rfile;
@@ -862,6 +985,76 @@ public:
 		std::cout << "finished searching seeds " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
+	void findWeigthedSeed(string keyfile, int minFreq,int seedc) {
+		locationnode lnd;
+		/*
+		 //	std::cout << "finished compute" << std::endl;
+		 Platform::Timer timer;
+
+		 //	std::cout << "staring" << std::endl;
+		 timer.Start();
+		 vector<locationnode> locationlist;
+		 vector<int> seedlist(seedc);
+		 set<int> selectednodes;
+		 typedef std::map<int, locationnode>::iterator nodeit;
+		 for (nodeit iterator = weigthedLocationSummary.begin();
+		 iterator != weigthedLocationSummary.end(); iterator++) {
+		 if(iterator->second.influenceset.size()>2) {
+		 locationlist.push_back(iterator->second);
+		 }
+		 }
+		 sort(locationlist.begin(), locationlist.end(), sortByInfluenceSet);
+		 seedlist[0] = locationlist[0].locationid;
+		 HyperLogLog seed(numberofbuckets);
+
+		 double max = -1.0, tempsize = 0.0;
+
+		 int newseed;
+		 HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(
+		 numberofbuckets), newinf(numberofbuckets);
+		 //	is = nodelist[0].nodeset;
+		 //	selectednodes.insert(nodelist[0].nodeid);
+
+		 for (int i = 1; i < seedc; i++) {
+
+		 max = 0.0;
+
+		 for (node &n : nodelist) {
+		 if (selectednodes.find(n.nodeid) == selectednodes.end()) {
+		 if (n.nodeset.estimate() < max) {
+		 break;
+		 }
+		 temp = is;
+		 temp.merge(n.nodeset);
+		 tempsize = temp.estimate();
+		 if (tempsize > max) {
+		 max = tempsize;
+		 maxinf = temp;
+		 newseed = n.nodeid;
+		 newinf = n.nodeset;
+		 }
+		 }
+		 }
+		 seedlist[i] = newseed;
+		 selectednodes.insert(newseed);
+		 is.merge(newinf);
+		 }
+
+		 ofstream result;
+		 stringstream resultfile;
+		 resultfile << keyfile << "_s" << seedc << ".keys";
+		 std::cout << resultfile.str() << endl;
+		 result.open(resultfile.str().c_str());
+		 for (int n : seedlist) {
+		 result << n << "\n";
+		 std::cout << n << endl;
+
+		 }
+
+		 result.close();
+		 */
+	}
+
 private:
 	void cleanup(long checkintime, long window, bool isforward) {
 
@@ -894,9 +1087,7 @@ private:
 			newlist.clear();
 
 		}
-		map<string, map<int, long> > *pt;
-		pt=&userSummary;
-		//delete[] pt;
+
 		//userSummary.clear();
 		userSummary = newuserSummary;
 		//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
@@ -999,76 +1190,6 @@ private:
 
 		result.close();
 	}
-	void findWeigthedSeed(string keyfile, int seedc) {
-		locationnode lnd;
-		/*
-		 //	std::cout << "finished compute" << std::endl;
-		 Platform::Timer timer;
-
-		 //	std::cout << "staring" << std::endl;
-		 timer.Start();
-		 vector<locationnode> locationlist;
-		 vector<int> seedlist(seedc);
-		 set<int> selectednodes;
-		 typedef std::map<int, locationnode>::iterator nodeit;
-		 for (nodeit iterator = weigthedLocationSummary.begin();
-		 iterator != weigthedLocationSummary.end(); iterator++) {
-		 if(iterator->second.influenceset.size()>2) {
-		 locationlist.push_back(iterator->second);
-		 }
-		 }
-		 sort(locationlist.begin(), locationlist.end(), sortByInfluenceSet);
-		 seedlist[0] = locationlist[0].locationid;
-		 HyperLogLog seed(numberofbuckets);
-
-		 double max = -1.0, tempsize = 0.0;
-
-		 int newseed;
-		 HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(
-		 numberofbuckets), newinf(numberofbuckets);
-		 //	is = nodelist[0].nodeset;
-		 //	selectednodes.insert(nodelist[0].nodeid);
-
-		 for (int i = 1; i < seedc; i++) {
-
-		 max = 0.0;
-
-		 for (node &n : nodelist) {
-		 if (selectednodes.find(n.nodeid) == selectednodes.end()) {
-		 if (n.nodeset.estimate() < max) {
-		 break;
-		 }
-		 temp = is;
-		 temp.merge(n.nodeset);
-		 tempsize = temp.estimate();
-		 if (tempsize > max) {
-		 max = tempsize;
-		 maxinf = temp;
-		 newseed = n.nodeid;
-		 newinf = n.nodeset;
-		 }
-		 }
-		 }
-		 seedlist[i] = newseed;
-		 selectednodes.insert(newseed);
-		 is.merge(newinf);
-		 }
-
-		 ofstream result;
-		 stringstream resultfile;
-		 resultfile << keyfile << "_s" << seedc << ".keys";
-		 std::cout << resultfile.str() << endl;
-		 result.open(resultfile.str().c_str());
-		 for (int n : seedlist) {
-		 result << n << "\n";
-		 std::cout << n << endl;
-
-		 }
-
-		 result.close();
-		 */
-	}
-
 	void writeData(vector<string> data,string path) {
 		ofstream result;
 
@@ -1079,6 +1200,20 @@ private:
 		}
 
 		result.close();
+	}
+	vector<int> readKeys(string file,int k) {
+		ifstream infile(file.c_str());
+		vector<int> keys;
+		string line;
+		int count=0;
+		while (infile >> line) {
+			keys.push_back(atoi(line.c_str()));
+			count++;
+			if(count>k) {
+				break;
+			}
+		}
+		return keys;
 	}
 };
 
