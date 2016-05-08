@@ -28,13 +28,14 @@ int main(int argc, char *argv[]) {
 	string file = "Gowalla";
 //string file="BrightKi";
 
-
 	int window = 100; //hour
 	int bucket = 8;
 	int k = 100;
 	int minFreq = 1;
 	bool withFriend = false;
 	bool isforward = true;
+	bool monitor = false;
+	bool weigthed = false;
 	string forward = "";
 	if (argc > 0) {
 		//std::cout << argv[0] << argv[1]	<<argv[2]	<< std::endl;
@@ -58,6 +59,18 @@ int main(int argc, char *argv[]) {
 				} else if (extra.compare("-f=false") == 0) {
 					withFriend = false;
 				}
+			} else if (extra[1] == 'm') {
+				if (extra.compare("-m=true") == 0) {
+					monitor = true;
+				} else if (extra.compare("-f=false") == 0) {
+					monitor = false;
+				}
+			} else if (extra[1] == 'w') {
+				if (extra.compare("-w=true") == 0) {
+					weigthed = true;
+				} else if (extra.compare("-f=false") == 0) {
+					weigthed = false;
+				}
 			}
 
 		}
@@ -69,7 +82,7 @@ int main(int argc, char *argv[]) {
 	string ifile = folder + "checkins.csv";
 	string ofile = folder + file;
 	string friendfile = folder + "friends.txt";
-	LocationInfluence li(bucket, ifile, ofile);
+	LocationInfluence li(bucket, ifile, ofile,folder);
 
 	// To test accuracy
 
@@ -79,15 +92,18 @@ int main(int argc, char *argv[]) {
 //****************************************//
 	//li.topKwithoutFrequency(window, k);
 	//li.FindInflunceApproxUnitFreqBackward(window, k, true);
-	if (withFriend) {
-		li.generateFriendshipData(friendfile);
+
+	if (weigthed) {
+		if (withFriend) {
+			li.generateFriendshipData(friendfile);
+		}
+		li.FindInflunceWeigthed(window, isforward, withFriend, monitor);
+
+		li.queryWeighted(minFreq);
+	} else {
+		li.FindInflunceApprox(window, isforward, monitor);
+		li.queryAll(minFreq);
 	}
-	li.FindInflunceApprox(window, isforward);
-	li.queryAll(minFreq);
-//	li.FindInflunceWeigthed(window, isforward, withFriend);
-
-//	li.queryWeighted(minFreq);
-
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
 	//li.topK(minFreq, k);

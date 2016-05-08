@@ -68,16 +68,18 @@ public:
 	map<int, set<int>> exactCompactLocationSummary;
 	map<string, ModifiedHyperLogLog > compactUsrSummary;
 	map<string,HyperLogLog> friendmap;
+	string datafolder;
 	uint8_t numberofbuckets;
 	string datafile;
 	string outfile;
 	long window = 0;
-	LocationInfluence(uint8_t b = 7, string file = "", string ofile = "")
+	LocationInfluence(uint8_t b = 7, string file = "", string ofile = "",string folder = "")
 	throw (invalid_argument) {
 
 		numberofbuckets = b;
 		datafile = file;
 		outfile = ofile;
+		datafolder=folder;
 	}
 	void generateFriendshipData(string file) {
 		ifstream infile(file.c_str());
@@ -363,7 +365,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-			//	std::cout << i << " " << userSummary.size() << std::endl;
+				//	std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
@@ -390,7 +392,7 @@ public:
 			findseed(outfile, k);
 		}
 	}
-	void FindInflunceWeigthed(int wp,bool isforward,bool withFriend) {
+	void FindInflunceWeigthed(int wp,bool isforward,bool withFriend,bool monitorTime) {
 
 		window = 0;
 
@@ -424,7 +426,8 @@ public:
 		std::cout << "read and sorted data " << datasize << " in "
 		<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
-
+		vector<string> monitordata;
+		Platform::Timer mtimer;
 		timer.Start();
 		int locationid;
 		long checkintime;
@@ -434,6 +437,9 @@ public:
 		map<int, long> newuser;
 		map<int, HyperLogLog> newlochll;
 		typedef std::map<int, long>::iterator it_type;
+		if(monitorTime) {
+			mtimer.Start();
+		}
 		for (int i = 0; i < datasize - 1; i++) {
 			userid = data[i].user;
 			locationid = data[i].location;
@@ -510,18 +516,26 @@ public:
 			if (i % 100000 == 0) {
 				std::cout << i << " " << userSummary.size() << std::endl;
 				//cleanup(checkintime, window, isforward);
+			}if(monitorTime) {
+				if (i % 1000 == 0) {
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
+					mtimer.Start();
+				}
 			}
-		} //end of data for loop
 
+		} //end of data for loop
 		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
 		<< std::endl;
-
+		if(monitorTime) {
+			writeData(monitordata,datafolder+"monitorNW_"+to_string(wp)+".csv");
+		}
 	}
-	void FindInflunceApprox(int wp, bool isforward) {
+	void FindInflunceApprox(int wp, bool isforward,bool monitorTime) {
 		window = 0;
 
 		window = wp * 60 * 60;
-
+		vector<string> monitordata;
+		Platform::Timer mtimer;
 		vector<string> temp;
 		vector<edge> data;
 		ifstream infile(datafile.c_str());
@@ -530,6 +544,7 @@ public:
 		std::cout << datafile << std::endl;
 		string line;
 		Platform::Timer timer;
+
 		timer.Start();
 		while (infile >> line) {
 
@@ -550,16 +565,16 @@ public:
 		//	std::cout << "read and sorted data " << datasize << " in "
 		//<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
-		std::cout <<data[0].checkin<< std::endl;
-		std::cout <<data[1].checkin<< std::endl;
+
 		timer.Start();
 		int locationid;
 		long checkintime;
 		string userid;
 		long diff;
 		int srcLoc, destLoc;
-
-
+		if(monitorTime) {
+			mtimer.Start();
+		}
 		typedef std::map<int, long>::iterator it_type;
 		for (int i = 0; i < datasize - 1; i++) {
 			userid = data[i].user;
@@ -615,9 +630,19 @@ public:
 				//std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
+			if(monitorTime) {
+				if (i % 1000 == 0) {
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
+					mtimer.Start();
+				}
+			}
+
 		} //end of data for loop
 		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
 		<< std::endl;
+		if(monitorTime) {
+			writeData(monitordata,datafolder+"monitorNW_"+to_string(wp)+".csv");
+		}
 	}
 	void FindInflunceExact(int wp, bool isforward) {
 		window = 0;
@@ -1044,6 +1069,17 @@ private:
 		 */
 	}
 
+	void writeData(vector<string> data,string path) {
+		ofstream result;
+
+		result.open(path.c_str());
+		for (string n : data) {
+			result << n;
+
+		}
+
+		result.close();
+	}
 };
 
 }
