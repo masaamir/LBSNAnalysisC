@@ -16,9 +16,11 @@
 #include "Split.h"
 #include <set>
 #include "modifiedhyperloglog.hpp"
+#include "util.h"
 using namespace hll;
 using namespace std;
 using namespace mhll;
+using namespace util;
 namespace lif {
 
 struct edge {
@@ -351,12 +353,12 @@ public:
 			compactUsrSummary[userid]=newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << compactUsrSummary.size() << std::endl;
+				//	std::cout << i << " " << compactUsrSummary.size() << std::endl;
 				cleanupApprox(checkintime,window);
 			}
 		}
-		std::cout << "parsed in "
-		<< timer.LiveElapsedSeconds() << std::endl;
+		std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
+		//std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue()	<< std::endl;
 		if(write) {
 			ofstream result;
 			stringstream resultfile;
@@ -451,8 +453,8 @@ public:
 				cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
-		<< std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
+		//std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue()	<< std::endl;
 		if(write) {
 			ofstream result;
 			stringstream resultfile;
@@ -600,6 +602,7 @@ public:
 				//cleanup(checkintime, window, isforward);
 			}if(monitorTime) {
 				if (i % 1000 == 0) {
+					//	monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
 					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
@@ -714,6 +717,7 @@ public:
 			}
 			if(monitorTime) {
 				if (i % 1000 == 0) {
+					//	monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
 					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
@@ -818,7 +822,7 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-			//	std::cout << i << " " << userSummary.size() << std::endl;
+				//	std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop

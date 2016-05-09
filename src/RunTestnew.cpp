@@ -85,6 +85,8 @@ int main(int argc, char *argv[]) {
 					cmd = "spread";
 				} else if (extra.compare("-c=6") == 0) {
 					cmd = "naive";
+				} else if (extra.compare("-c=7") == 0) {
+					cmd = "backward";
 				}
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
@@ -107,18 +109,16 @@ int main(int argc, char *argv[]) {
 	if (cmd.compare("naive") == 0) {
 
 		li.findtopKusingNaive(ofile, k);
-	}
-	// To test accuracy
-	if (cmd.compare("accuracy") == 0) {
+	} else if (cmd.compare("backward") == 0) {
+
+		li.FindInflunceApproxUnitFreqBackward(window, true);
+	} else if (cmd.compare("accuracy") == 0) {
 		li.FindInflunceApproxUnitFreq(window, k, false, true);
 		li.FindInflunceExactUnitFreq(window, isforward, true);
-	}
-	if (cmd.compare("unitCompare") == 0) {
+	} else if (cmd.compare("unitCompare") == 0) {
 		li.FindInflunceApproxUnitFreq(window, k, true, false);
-		li.FindInflunceApproxUnitFreqBackward(window, true);
-	}
 
-	if (cmd.compare("influnceset") == 0) {
+	} else if (cmd.compare("influnceset") == 0) {
 		std::cout << "finding influnce set " << file << " window: " << window
 				<< " frequency: " << minFreq << " weighted:" << weigthed
 				<< " with friend:" << withFriend << std::endl;
@@ -133,8 +133,7 @@ int main(int argc, char *argv[]) {
 			li.FindInflunceApprox(window, isforward, monitor);
 			li.queryAll(minFreq);
 		}
-	}
-	if (cmd.compare("seed") == 0) {
+	} else if (cmd.compare("seed") == 0) {
 		std::cout << "finding " << k << " seed for " << file << " window: "
 				<< window << " frequency: " << minFreq << " weighted:"
 				<< weigthed << " with friend:" << withFriend << std::endl;
@@ -153,8 +152,7 @@ int main(int argc, char *argv[]) {
 				li.FindInflunceApproxUnitFreq(window, k, false, true);
 			}
 		}
-	}
-	if (cmd.compare("spread") == 0) {
+	} else if (cmd.compare("spread") == 0) {
 		std::cout << "finding spread of " << k << " seed for " << seedfile
 				<< " window: " << window << " frequency: " << minFreq
 				<< std::endl;
@@ -162,6 +160,8 @@ int main(int argc, char *argv[]) {
 		li.queryExact(minFreq);
 		li.queryInflunceSet(folder + "\\" + seedfile + ".keys", k,
 				folder + "\\" + seedfile + ".spread");
+	} else {
+		std::cout << "no command found" + argv << std::endl;
 	}
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
