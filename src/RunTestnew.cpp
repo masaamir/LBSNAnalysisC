@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 		window = stoi(argv[2]); //hours
 		file = argv[1];
 		k = 100;
-		minFreq = 1;
+
 		string extra;
 		std::cout << file << " @ " << argv[2] << std::endl;
 		for (int i = 3; i < argc; i++) {
@@ -90,6 +90,8 @@ int main(int argc, char *argv[]) {
 				seedfile = extra.substr(3, extra.length());
 			} else if (extra[1] == 'k') {
 				k = stoi(extra.substr(3, extra.length()));
+			} else if (extra[1] == 'l') {
+				minFreq = stoi(extra.substr(3, extra.length()));
 			}
 
 		}
@@ -144,7 +146,7 @@ int main(int argc, char *argv[]) {
 
 			li.findWeigthedSeed("", minFreq, k);
 		} else {
-			if (k > 1) {
+			if (minFreq > 1) {
 				li.FindInflunceApprox(window, isforward, monitor);
 				li.findseed(minFreq, k);
 			} else {
