@@ -33,20 +33,19 @@ struct node {
 	HyperLogLog nodeset;
 	double estimate;
 };
-struct hypernode {
-	HyperLogLog bridging;
-	HyperLogLog friends;
+
+struct weigthedseedLocation {
+	map<int, HyperLogLog> seedInfluence;
+	set<int> selectednodes;
+	double totalweight;
+
 };
 struct locationnode {
 	int locationid;
 	HyperLogLog visitor;
 	map<int, HyperLogLog> influenceset;
 };
-struct locationwithfriend {
-	int locationid;
-	HyperLogLog visitor;
-	map<int, hypernode> influenceset;
-};
+
 bool sortByEstimate(const node &lhs, const node &rhs) {
 	return lhs.estimate > rhs.estimate;
 }
@@ -357,8 +356,8 @@ public:
 				cleanupApprox(checkintime,window);
 			}
 		}
-		std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
-		//std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue()	<< std::endl;
+		//std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue() << std::endl;
 		if(write) {
 			ofstream result;
 			stringstream resultfile;
@@ -453,8 +452,8 @@ public:
 				cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
-		//std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue()	<< std::endl;
+		  //std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue() << std::endl;
 		if(write) {
 			ofstream result;
 			stringstream resultfile;
@@ -598,12 +597,12 @@ public:
 			userSummary[userid] = newuser;
 
 			if (i % 100000 == 0) {
-				std::cout << i << " " << userSummary.size() << std::endl;
-				//cleanup(checkintime, window, isforward);
+				//std::cout << i << " " << userSummary.size() << std::endl;
+				cleanup(checkintime, window, isforward);
 			}if(monitorTime) {
 				if (i % 1000 == 0) {
-					//	monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
+					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
 			}
@@ -717,8 +716,8 @@ public:
 			}
 			if(monitorTime) {
 				if (i % 1000 == 0) {
-					//	monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
+					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
 			}
@@ -991,75 +990,105 @@ public:
 	}
 	void findWeigthedSeed(string keyfile, int minFreq,int seedc) {
 		locationnode lnd;
-		/*
-		 //	std::cout << "finished compute" << std::endl;
-		 Platform::Timer timer;
 
-		 //	std::cout << "staring" << std::endl;
-		 timer.Start();
-		 vector<locationnode> locationlist;
-		 vector<int> seedlist(seedc);
-		 set<int> selectednodes;
-		 typedef std::map<int, locationnode>::iterator nodeit;
-		 for (nodeit iterator = weigthedLocationSummary.begin();
-		 iterator != weigthedLocationSummary.end(); iterator++) {
-		 if(iterator->second.influenceset.size()>2) {
-		 locationlist.push_back(iterator->second);
-		 }
-		 }
-		 sort(locationlist.begin(), locationlist.end(), sortByInfluenceSet);
-		 seedlist[0] = locationlist[0].locationid;
-		 HyperLogLog seed(numberofbuckets);
+		Platform::Timer timer;
 
-		 double max = -1.0, tempsize = 0.0;
+		timer.Start();
+		weigthedseedLocation wsl;
+		vector<int> seedlist(seedc);
 
-		 int newseed;
-		 HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(
-		 numberofbuckets), newinf(numberofbuckets);
-		 //	is = nodelist[0].nodeset;
-		 //	selectednodes.insert(nodelist[0].nodeid);
+		double totalweight;
 
-		 for (int i = 1; i < seedc; i++) {
+		typedef std::map<int, locationnode>::iterator nodeit;
+		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
+		int candidatWeightGain;
+		int candidateid=0;
+		int candidateSizegain=0;
+		int maxsizeGain=-1;
+		for(int i=0;i<seedc;i++) {
 
-		 max = 0.0;
+			candidateid=0;
+			maxsizeGain=-1;
+			candidateSizegain=0;
+			candidatWeightGain=0;
+			for (nodeit iterator = weigthedLocationSummary.begin();
+					iterator != weigthedLocationSummary.end(); iterator++) {
 
-		 for (node &n : nodelist) {
-		 if (selectednodes.find(n.nodeid) == selectednodes.end()) {
-		 if (n.nodeset.estimate() < max) {
-		 break;
-		 }
-		 temp = is;
-		 temp.merge(n.nodeset);
-		 tempsize = temp.estimate();
-		 if (tempsize > max) {
-		 max = tempsize;
-		 maxinf = temp;
-		 newseed = n.nodeid;
-		 newinf = n.nodeset;
-		 }
-		 }
-		 }
-		 seedlist[i] = newseed;
-		 selectednodes.insert(newseed);
-		 is.merge(newinf);
-		 }
+				HyperLogLog hll;
 
-		 ofstream result;
-		 stringstream resultfile;
-		 resultfile << keyfile << "_s" << seedc << ".keys";
-		 std::cout << resultfile.str() << endl;
-		 result.open(resultfile.str().c_str());
-		 for (int n : seedlist) {
-		 result << n << "\n";
-		 std::cout << n << endl;
+				if(wsl.selectednodes.find(iterator->first)==wsl.selectednodes.end()) {
+					lnd=iterator->second;
+					candidateSizegain=sizeGain(wsl,lnd);
+					if(candidateSizegain>maxsizeGain) {
+						candidateid=iterator->first;
 
-		 }
+					} else if(candidateSizegain==maxsizeGain) {
+						//if size gain is same check for weight gain
+						candidatWeightGain=getweightGain(wsl,weigthedLocationSummary[candidateid]);
+						if(candidatWeightGain<getweightGain(wsl,lnd)) {
+							candidateid=iterator->first;
+						}
+					}
+				}
+			} //end of for loop
+			  //add the survived candidate to the seed
+			addSeed(wsl,weigthedLocationSummary[candidateid]);
+			seedlist.push_back(candidateid);
+		}
+		std::cout << "finished finding seed " << timer.LiveElapsedSeconds()
+		<< std::endl;
+		ofstream result;
+		stringstream resultfile;
+		resultfile << keyfile << "_s" << seedc << ".keys";
+		std::cout << resultfile.str() << endl;
+		result.open(resultfile.str().c_str());
+		for (int n : seedlist) {
+			result << n << "\n";
+			std::cout << n << endl;
 
-		 result.close();
-		 */
+		}
+
+		result.close();
 	}
 
 private:
+	int sizeGain(weigthedseedLocation wsloc,locationnode locnode) {
+		int oldsize=wsloc.selectednodes.size();
+		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
+		for(influencesetit ifit=locnode.influenceset.begin();ifit!=locnode.influenceset.end();ifit++) {
+			wsloc.selectednodes.insert(ifit->first);
+		}
+		return wsloc.selectednodes.size()-oldsize;
+
+	}
+	void addSeed(weigthedseedLocation& wsloc,locationnode locnode) {
+
+		wsloc.selectednodes.insert(locnode.locationid);
+		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
+		for(influencesetit ifit=locnode.influenceset.begin();ifit!=locnode.influenceset.end();ifit++) {
+			if(wsloc.seedInfluence.find(ifit->first)==wsloc.seedInfluence.end()) {
+				wsloc.seedInfluence[ifit->first]=ifit->second;
+			} else {
+				wsloc.seedInfluence[ifit->first].merge(ifit->second);
+			}
+		}
+		wsloc.totalweight=getTotalWeigth(wsloc);
+		//	return wsloc;
+	}
+	double getTotalWeigth(weigthedseedLocation wsloc) {
+		double weight;
+
+		for(int n:wsloc.selectednodes) {
+			weight=weight+wsloc.seedInfluence[n].estimate()/weigthedLocationSummary[n].visitor.estimate();
+		}
+		return weight;
+	}
+	double getweightGain(weigthedseedLocation wsloc,locationnode locnode) {
+		double oldweight=getTotalWeigth(wsloc);
+		addSeed(wsloc,locnode);
+
+		return getTotalWeigth(wsloc)-oldweight;
+	}
 	void cleanup(long checkintime, long window, bool isforward) {
 
 		map<string, map<int, long> > newuserSummary;
@@ -1092,22 +1121,22 @@ private:
 
 		}
 
-		//userSummary.clear();
+//userSummary.clear();
 		userSummary = newuserSummary;
-		//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
-		//	userSummary.erase(removelist[i]);
-		//}
+//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
+//	userSummary.erase(removelist[i]);
+//}
 	}
-	void cleanupApprox (long checkintime, long window) {
+	void cleanupApprox(long checkintime, long window) {
 
-		map<string,ModifiedHyperLogLog > newuserSummary;
+		map<string, ModifiedHyperLogLog> newuserSummary;
 		ModifiedHyperLogLog newlist;
 		long diff;
 		typedef std::map<string, ModifiedHyperLogLog>::iterator it1;
 
 		for (it1 it = compactUsrSummary.begin(); it != compactUsrSummary.end(); it++) {
-			newlist=it->second;
-			newlist.cleanup(checkintime,window);
+			newlist = it->second;
+			newlist.cleanup(checkintime, window);
 
 			if (newlist.estimate() > 0) {
 				newuserSummary[it->first] = newlist;
@@ -1115,22 +1144,22 @@ private:
 
 		}
 
-		//delete[] pt;
-		//userSummary.clear();
+//delete[] pt;
+//userSummary.clear();
 		compactUsrSummary = newuserSummary;
-		//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
-		//	userSummary.erase(removelist[i]);
-		//}
+//	for (unsigned i = 0; i < removelist.size() - 1; i++) {
+//	userSummary.erase(removelist[i]);
+//}
 	}
 
 	void findseed(string keyfile, int seedc) {
 
 		node nd;
 
-		//	std::cout << "finished compute" << std::endl;
+//	std::cout << "finished compute" << std::endl;
 		Platform::Timer timer;
 
-		//	std::cout << "staring" << std::endl;
+//	std::cout << "staring" << std::endl;
 		timer.Start();
 		vector<node> nodelist(seedc);
 		vector<int> seedlist(seedc);
@@ -1151,8 +1180,8 @@ private:
 		double max = -1.0, tempsize = 0.0;
 
 		int newseed;
-		HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(
-				numberofbuckets), newinf(numberofbuckets);
+		HyperLogLog is(numberofbuckets), temp(numberofbuckets), maxinf(numberofbuckets),
+		newinf(numberofbuckets);
 		is = nodelist[0].nodeset;
 		selectednodes.insert(nodelist[0].nodeid);
 
@@ -1194,7 +1223,7 @@ private:
 
 		result.close();
 	}
-	void writeData(vector<string> data,string path) {
+	void writeData(vector<string> data, string path) {
 		ofstream result;
 
 		result.open(path.c_str());
@@ -1205,21 +1234,22 @@ private:
 
 		result.close();
 	}
-	vector<int> readKeys(string file,int k) {
+	vector<int> readKeys(string file, int k) {
 		ifstream infile(file.c_str());
 		vector<int> keys;
 		string line;
-		int count=0;
+		int count = 0;
 		while (infile >> line) {
 			keys.push_back(atoi(line.c_str()));
 			count++;
-			if(count>k) {
+			if (count > k) {
 				break;
 			}
 		}
 		return keys;
 	}
-};
+}
+;
 
 }
 

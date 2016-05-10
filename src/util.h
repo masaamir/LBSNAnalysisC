@@ -24,6 +24,9 @@ std::string exec(const char* cmd) {
 	}
 	return result;
 }
+int getValue() {
+	return 0;
+}
 
 }
 
