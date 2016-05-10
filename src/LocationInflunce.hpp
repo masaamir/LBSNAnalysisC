@@ -601,7 +601,7 @@ public:
 				cleanup(checkintime, window, isforward);
 			}if(monitorTime) {
 				if (i % 1000 == 0) {
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedSeconds())+to_string(getValue())+"\n");
 					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
@@ -716,7 +716,7 @@ public:
 			}
 			if(monitorTime) {
 				if (i % 1000 == 0) {
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds()+to_string(getValue()))+"\n");
+					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedSeconds())+to_string(getValue())+"\n");
 					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}

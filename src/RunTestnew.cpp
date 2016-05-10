@@ -26,10 +26,11 @@ using namespace util;
 int main(int argc, char *argv[]) {
 //string file="foursquare";
 	string file = "Gowalla";
+	string pathSeperator = "\\";
 //string file="BrightKi";
 	int window = 100; //hour
 	int bucket = 8;
-	int k = 100;
+	int numberOfSeed = 100;
 	int minFreq = 1;
 	bool withFriend = false;
 	bool isforward = true;
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]) {
 
 		window = stoi(argv[2]); //hours
 		file = argv[1];
-		k = 100;
+		numberOfSeed = 100;
 
 		string extra;
 		std::cout << file << " @ " << argv[2] << std::endl;
@@ -91,7 +92,7 @@ int main(int argc, char *argv[]) {
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
 			} else if (extra[1] == 'k') {
-				k = stoi(extra.substr(3, extra.length()));
+				numberOfSeed = stoi(extra.substr(3, extra.length()));
 			} else if (extra[1] == 'l') {
 				minFreq = stoi(extra.substr(3, extra.length()));
 			}
@@ -102,21 +103,23 @@ int main(int argc, char *argv[]) {
 
 	//string folder = "D:\\dataset\\Synthetic Data\\" + file + "\\";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
+	//string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
+	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";
 	string ifile = folder + "checkins.csv";
 	string ofile = folder + file;
 	string friendfile = folder + "friends.txt";
 	LocationInfluence li(bucket, ifile, ofile, folder);
 	if (cmd.compare("naive") == 0) {
 
-		li.findtopKusingNaive(ofile, k);
+		li.findtopKusingNaive(ofile, numberOfSeed);
 	} else if (cmd.compare("backward") == 0) {
 
 		li.FindInflunceApproxUnitFreqBackward(window, true);
 	} else if (cmd.compare("accuracy") == 0) {
-		li.FindInflunceApproxUnitFreq(window, k, false, true);
+		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
 		li.FindInflunceExactUnitFreq(window, isforward, true);
 	} else if (cmd.compare("unitCompare") == 0) {
-		li.FindInflunceApproxUnitFreq(window, k, true, false);
+		li.FindInflunceApproxUnitFreq(window, numberOfSeed, true, false);
 
 	} else if (cmd.compare("influnceset") == 0) {
 		std::cout << "finding influnce set " << file << " window: " << window
@@ -134,34 +137,43 @@ int main(int argc, char *argv[]) {
 			li.queryAll(minFreq);
 		}
 	} else if (cmd.compare("seed") == 0) {
-		std::cout << "finding " << k << " seed for " << file << " window: "
-				<< window << " frequency: " << minFreq << " weighted:"
-				<< weigthed << " with friend:" << withFriend << std::endl;
+		std::cout << "finding " << numberOfSeed << " seed for " << file
+				<< " window: " << window << " frequency: " << minFreq
+				<< " weighted:" << weigthed << " with friend:" << withFriend
+				<< std::endl;
 		if (weigthed) {
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
 			li.FindInflunceWeigthed(window, isforward, withFriend, monitor);
-
-			li.findWeigthedSeed("", minFreq, k);
+			if (withFriend) {
+				li.findWeigthedSeed(
+						ofile + "Weighted_w" + to_string(window) + "_f"
+								+ to_string(minFreq), minFreq, numberOfSeed);
+			} else {
+				li.findWeigthedSeed(
+						ofile + "WeightedFriend_w" + to_string(window) + "_f"
+								+ to_string(minFreq), minFreq, numberOfSeed);
+			}
 		} else {
 			if (minFreq > 1) {
 				li.FindInflunceApprox(window, isforward, monitor);
-				li.findseed(minFreq, k);
+				li.findseed(minFreq, numberOfSeed);
 			} else {
-				li.FindInflunceApproxUnitFreq(window, k, false, true);
+				li.FindInflunceApproxUnitFreq(window, numberOfSeed, false,
+						true);
 			}
 		}
 	} else if (cmd.compare("spread") == 0) {
-		std::cout << "finding spread of " << k << " seed for " << seedfile
-				<< " window: " << window << " frequency: " << minFreq
-				<< std::endl;
+		std::cout << "finding spread of " << numberOfSeed << " seed for "
+				<< seedfile << " window: " << window << " frequency: "
+				<< minFreq << std::endl;
 		li.FindInflunceExact(window, true);
 		li.queryExact(minFreq);
-		li.queryInflunceSet(folder + "\\" + seedfile + ".keys", k,
-				folder + "\\" + seedfile + ".spread");
+		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys", numberOfSeed,
+				folder + pathSeperator + seedfile + ".spread");
 	} else {
-		std::cout << "no command found" + argv << std::endl;
+		std::cout << "no command found" << std::endl;
 	}
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
