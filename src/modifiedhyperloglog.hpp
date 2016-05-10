@@ -191,7 +191,7 @@ public:
 			for (uint32_t i = 0; i < m_; i++) {
 
 				for (uint32_t j = 0; j < other.M_[i].size(); j++) {
-					if (other.M_[i][j].time - time <= window) {
+					if (other.M_[i][j].time - time < window) {
 						updateBucket(i, other.M_[i][j].value,
 								other.M_[i][j].time);
 					}

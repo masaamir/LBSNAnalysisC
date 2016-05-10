@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 			} else if (extra[1] == 'm') {
 				if (extra.compare("-m=true") == 0) {
 					monitor = true;
-				} else if (extra.compare("-f=false") == 0) {
+				} else if (extra.compare("-m=false") == 0) {
 					monitor = false;
 				}
 			} else if (extra[1] == 'w') {
@@ -92,16 +92,16 @@ int main(int argc, char *argv[]) {
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
 			} else if (extra[1] == 'k') {
-				numberOfSeed = stoi(extra.substr(3, extra.length()));
+				numberOfSeed = atoi(extra.substr(3, extra.length()).c_str());
 			} else if (extra[1] == 'l') {
-				minFreq = stoi(extra.substr(3, extra.length()));
+				minFreq = atoi(extra.substr(3, extra.length()).c_str());
 			}
 
 		}
 
 	}
 
-	//string folder = "D:\\dataset\\Synthetic Data\\" + file + "\\";
+//	string folder = "D:\\dataset\\new\\";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 	//string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
 	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";

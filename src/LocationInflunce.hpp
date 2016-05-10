@@ -37,6 +37,7 @@ struct node {
 struct weigthedseedLocation {
 	map<int, HyperLogLog> seedInfluence;
 	set<int> selectednodes;
+	HyperLogLog influencedLoc;
 	double totalweight;
 
 };
@@ -400,7 +401,7 @@ public:
 		sort(data.begin(), data.end());
 		int datasize = data.size();
 		std::cout << "read and sorted data " << datasize << " in "
-		<< timer.LiveElapsedMilliseconds() << std::endl;
+		<< timer.LiveElapsedSeconds() << std::endl;
 		timer.Start();
 		int locationid;
 		long checkintime;
@@ -990,50 +991,79 @@ public:
 	}
 	void findWeigthedSeed(string keyfile, int minFreq,int seedc) {
 		locationnode lnd;
+		node nd;
 
 		Platform::Timer timer;
 
 		timer.Start();
+		vector<node> nodelist(seedc);
 		weigthedseedLocation wsl;
+
 		vector<int> seedlist(seedc);
 
-		double totalweight;
-
 		typedef std::map<int, locationnode>::iterator nodeit;
-		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
+		typedef std::map<int, HyperLogLog>::iterator infsetit;
 		int candidatWeightGain;
-		int candidateid=0;
+		int bestId=0;
 		int candidateSizegain=0;
-		int maxsizeGain=-1;
+		int bestSizeGain=-1;
+		int count;
+		for (nodeit iterator = weigthedLocationSummary.begin();
+				iterator != weigthedLocationSummary.end(); iterator++) {
+			HyperLogLog hll(numberofbuckets);
+			nd.nodeid=iterator->first;
+
+			for (infsetit it = iterator->second.influenceset.begin();
+					it != iterator->second.influenceset.end(); it++) {
+				if (it->second.estimate() > minFreq) {
+					hll.add(to_string(it->first).c_str(),
+							to_string(it->first).size());
+					count++;
+				}
+
+			}
+			nd.nodeset=hll;
+			nd.estimate=hll.estimate();
+			count=0;
+			if(nd.estimate>2) {
+				nodelist.push_back(nd);
+			}
+		}
+		sort(nodelist.begin(), nodelist.end(), sortByEstimate);
+		std::cout << "finished compacting "<<nodelist.size()<<" time " << timer.LiveElapsedSeconds()
+		<< std::endl;
 		for(int i=0;i<seedc;i++) {
 
-			candidateid=0;
-			maxsizeGain=-1;
+			bestId=0;
+			bestSizeGain=-1;
 			candidateSizegain=0;
 			candidatWeightGain=0;
-			for (nodeit iterator = weigthedLocationSummary.begin();
-					iterator != weigthedLocationSummary.end(); iterator++) {
-
+			//	for (nodeit iterator = weigthedLocationSummary.begin();
+			//		iterator != weigthedLocationSummary.end(); iterator++) {
+			for(node tmp:nodelist) {
 				HyperLogLog hll;
 
-				if(wsl.selectednodes.find(iterator->first)==wsl.selectednodes.end()) {
-					lnd=iterator->second;
-					candidateSizegain=sizeGain(wsl,lnd);
-					if(candidateSizegain>maxsizeGain) {
-						candidateid=iterator->first;
+				if(wsl.selectednodes.find(tmp.nodeid)==wsl.selectednodes.end()) {
 
-					} else if(candidateSizegain==maxsizeGain) {
+					lnd=weigthedLocationSummary[tmp.nodeid];
+					candidateSizegain=sizeGain(wsl,tmp);
+					if(candidateSizegain>bestSizeGain) {
+						bestId=tmp.nodeid;
+						bestSizeGain=candidateSizegain;
+					} else if(candidateSizegain==bestSizeGain) {
 						//if size gain is same check for weight gain
-						candidatWeightGain=getweightGain(wsl,weigthedLocationSummary[candidateid]);
+						candidatWeightGain=getweightGain(wsl,weigthedLocationSummary[bestId]);
 						if(candidatWeightGain<getweightGain(wsl,lnd)) {
-							candidateid=iterator->first;
+							bestId=tmp.nodeid;
 						}
 					}
 				}
 			} //end of for loop
 			  //add the survived candidate to the seed
-			addSeed(wsl,weigthedLocationSummary[candidateid]);
-			seedlist.push_back(candidateid);
+
+			addSeed(wsl,weigthedLocationSummary[bestId]);
+			seedlist[i]=(bestId);
+
 		}
 		std::cout << "finished finding seed " << timer.LiveElapsedSeconds()
 		<< std::endl;
@@ -1044,7 +1074,6 @@ public:
 		result.open(resultfile.str().c_str());
 		for (int n : seedlist) {
 			result << n << "\n";
-			std::cout << n << endl;
 
 		}
 
@@ -1052,13 +1081,10 @@ public:
 	}
 
 private:
-	int sizeGain(weigthedseedLocation wsloc,locationnode locnode) {
-		int oldsize=wsloc.selectednodes.size();
-		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
-		for(influencesetit ifit=locnode.influenceset.begin();ifit!=locnode.influenceset.end();ifit++) {
-			wsloc.selectednodes.insert(ifit->first);
-		}
-		return wsloc.selectednodes.size()-oldsize;
+	int sizeGain(weigthedseedLocation wsloc,node& locnode) {
+		int oldsize=wsloc.influencedLoc.estimate();
+		wsloc.influencedLoc.merge(locnode.nodeset);
+		return wsloc.influencedLoc.estimate()-oldsize;
 
 	}
 	void addSeed(weigthedseedLocation& wsloc,locationnode locnode) {
@@ -1071,6 +1097,7 @@ private:
 			} else {
 				wsloc.seedInfluence[ifit->first].merge(ifit->second);
 			}
+			wsloc.influencedLoc.add(to_string(locnode.locationid).c_str(),to_string(locnode.locationid).length());
 		}
 		wsloc.totalweight=getTotalWeigth(wsloc);
 		//	return wsloc;
@@ -1217,7 +1244,6 @@ private:
 		result.open(resultfile.str().c_str());
 		for (int n : seedlist) {
 			result << n << "\n";
-			std::cout << n << endl;
 
 		}
 
