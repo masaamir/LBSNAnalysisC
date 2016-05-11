@@ -209,13 +209,13 @@ public:
 
 				if (M_[i][j].time - time <= window) {
 					data newdata;
-					newdata.time=M_[i][j].time;
-					newdata.value=M_[i][j].value;
+					newdata.time = M_[i][j].time;
+					newdata.value = M_[i][j].value;
 					newlist.push_back(newdata);
 				}
 
 			}
-			M_[i]=newlist;
+			M_[i] = newlist;
 		}
 	}
 	/**
@@ -260,6 +260,31 @@ public:
 			for (uint32_t j = 0; j < M_[i].size(); j++) {
 				if (max < M_[i][j].value) {
 					max = M_[i][j].value;
+				}
+			}
+
+			newhll.set(i, max);
+		}
+
+		return newhll;
+	}
+
+	HyperLogLog convertToHLL(long time, long window) {
+
+		HyperLogLog newhll(8);
+
+		uint8_t max = 0;
+
+		for (uint32_t i = 0; i < m_; i++) {
+
+			max = 0;
+
+			for (uint32_t j = 0; j < M_[i].size(); j++) {
+
+				if (M_[i][j].time - time < window) {
+					if (max < M_[i][j].value) {
+						max = M_[i][j].value;
+					}
 				}
 			}
 

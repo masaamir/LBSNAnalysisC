@@ -326,10 +326,9 @@ public:
 		string userid;
 		timer.Start();
 		string srcLoc;
-
+		ModifiedHyperLogLog newuser(numberofbuckets);
+		ModifiedHyperLogLog newloc(numberofbuckets);
 		for (int i = 0; i < datasize - 1; i++) {
-			ModifiedHyperLogLog newuser(numberofbuckets);
-			ModifiedHyperLogLog newloc(numberofbuckets);
 
 			userid = data[i].user;
 
@@ -338,23 +337,23 @@ public:
 
 			if (compactUsrSummary.find(userid) != compactUsrSummary.end()) {
 
-				newuser=compactUsrSummary[userid];
+
 				if(locSummary.find(srcLoc)==locSummary.end()) {
 
 					locSummary[srcLoc]=newloc;
 				}
-				newloc=locSummary[srcLoc];
-				newloc.merge(newuser,checkintime,window);
-				locSummary[srcLoc]=newloc;
+
+				locSummary[srcLoc].merge(compactUsrSummary[userid],checkintime,window);
+
+			} else {
+				compactUsrSummary[userid]=newuser;
 
 			}
-			newuser.add(srcLoc.c_str(),srcLoc.length(),checkintime);
-
-			compactUsrSummary[userid]=newuser;
+			compactUsrSummary[userid].add(srcLoc.c_str(),srcLoc.length(),checkintime);
 
 			if (i % 100000 == 0) {
 				//	std::cout << i << " " << compactUsrSummary.size() << std::endl;
-				cleanupApprox(checkintime,window);
+				//cleanupApprox(checkintime,window);
 			}
 		}
 		//std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
@@ -376,6 +375,91 @@ public:
 		}
 
 	}
+	void FindInflunceApproxUnitFreqBackwardNew(int wp, bool write) {
+		long window = wp * 60 * 60;
+
+		vector<string> temp;
+		vector<edge> data;
+		ifstream infile(datafile.c_str());
+		edge tempEdge;
+
+		std::cout << datafile << std::endl;
+		string line;
+		Platform::Timer timer;
+		timer.Start();
+		while (infile >> line) {
+
+			temp = Tools::Split(line, ',');
+
+			tempEdge.user = temp[0];
+			tempEdge.location = atoi(temp[1].c_str());
+			tempEdge.checkin = stol(temp[2].c_str());
+			data.push_back(tempEdge);
+
+		}
+		sort(data.begin(), data.end());
+		int datasize = data.size();
+		std::cout << "read and sorted data " << datasize << " in "
+		<< timer.LiveElapsedSeconds() << std::endl;
+		timer.Start();
+
+		cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
+		long checkintime;
+		string userid;
+		timer.Start();
+		int srcLoc;
+		ModifiedHyperLogLog newuser(numberofbuckets);
+		HyperLogLog newloc(numberofbuckets);
+		for (int i = 0; i < datasize - 1; i++) {
+
+			userid = data[i].user;
+
+			checkintime = data[i].checkin;
+			srcLoc=data[i].location;
+
+			if (compactUsrSummary.find(userid) != compactUsrSummary.end()) {
+
+				if(compactLocationSummary.find(srcLoc)==compactLocationSummary.end()) {
+
+					compactLocationSummary[srcLoc]=newloc;
+				}
+
+				compactLocationSummary[srcLoc].merge(compactUsrSummary[userid].convertToHLL(checkintime,window));
+
+			} else {
+				//ModifiedHyperLogLog nu(numberofbuckets);
+				//newuser=nu;
+				compactUsrSummary[userid]=newuser;
+			}
+
+			compactUsrSummary[userid].add(to_string(srcLoc).c_str(),to_string(srcLoc).length(),checkintime);
+
+			if (i % 100000 == 0) {
+				//	std::cout << i << " " << compactUsrSummary.size() << std::endl;
+				//cleanupApprox(checkintime,window);
+			}
+		}
+		//std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds()<<" "<<compactLocationSummary.size() << " memory "<<getValue() << std::endl;
+		if(write) {
+					ofstream result;
+					stringstream resultfile;
+					resultfile << outfile << "backNew_w" << window << ".csv";
+
+					result.open(resultfile.str().c_str());
+
+					typedef std::map<int, HyperLogLog>::iterator nodeit;
+					for (nodeit iterator = compactLocationSummary.begin();
+							iterator != compactLocationSummary.end(); iterator++) {
+						result << iterator->first << ","<< iterator->second.estimate()<<"\n";
+
+					}
+					result.close();
+				}
+
+
+	}
+
 	void FindInflunceApproxUnitFreq(int wp, int k,bool write,bool find) {
 		long window = wp * 60 * 60;
 
@@ -410,7 +494,7 @@ public:
 		int srcLoc;
 		string destLoc;
 		map<int, long> newuser;
-
+		cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 		typedef std::map<int, long>::iterator it_type;
 		for (int i = 0; i < datasize - 1; i++) {
 			userid = data[i].user;
@@ -450,11 +534,11 @@ public:
 
 			if (i % 100000 == 0) {
 				//	std::cout << i << " " << userSummary.size() << std::endl;
-				cleanup(checkintime, window, false);
+				//cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
 		  //std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " memory "<<getValue() << std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds()<<" "<<compactLocationSummary.size() << " memory "<<getValue() << std::endl;
 		if(write) {
 			ofstream result;
 			stringstream resultfile;
