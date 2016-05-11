@@ -337,7 +337,6 @@ public:
 
 			if (compactUsrSummary.find(userid) != compactUsrSummary.end()) {
 
-
 				if(locSummary.find(srcLoc)==locSummary.end()) {
 
 					locSummary[srcLoc]=newloc;
@@ -403,12 +402,14 @@ public:
 		<< timer.LiveElapsedSeconds() << std::endl;
 		timer.Start();
 
-		cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
+		//cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 		long checkintime;
 		string userid;
 		timer.Start();
 		int srcLoc;
 		ModifiedHyperLogLog newuser(numberofbuckets);
+
+		HyperLogLog compactuser;
 		HyperLogLog newloc(numberofbuckets);
 		for (int i = 0; i < datasize - 1; i++) {
 
@@ -418,14 +419,17 @@ public:
 			srcLoc=data[i].location;
 
 			if (compactUsrSummary.find(userid) != compactUsrSummary.end()) {
+				compactuser=compactUsrSummary[userid].convertToHLL(checkintime,window);
+				//*compactuser->clear();
 
-				if(compactLocationSummary.find(srcLoc)==compactLocationSummary.end()) {
+				if(compactuser.estimate()>0) {
+					if(compactLocationSummary.find(srcLoc)==compactLocationSummary.end()) {
 
-					compactLocationSummary[srcLoc]=newloc;
+						compactLocationSummary[srcLoc]=newloc;
+					}
+
+					compactLocationSummary[srcLoc].merge(compactuser);
 				}
-
-				compactLocationSummary[srcLoc].merge(compactUsrSummary[userid].convertToHLL(checkintime,window));
-
 			} else {
 				//ModifiedHyperLogLog nu(numberofbuckets);
 				//newuser=nu;
@@ -442,25 +446,24 @@ public:
 		//std::cout << "parsed in " << timer.LiveElapsedSeconds() << std::endl;
 		std::cout << "finished parsing " << timer.LiveElapsedSeconds()<<" "<<compactLocationSummary.size() << " memory "<<getValue() << std::endl;
 		if(write) {
-					ofstream result;
-					stringstream resultfile;
-					resultfile << outfile << "backNew_w" << window << ".csv";
+			ofstream result;
+			stringstream resultfile;
+			resultfile << outfile << "backNew_w" << window << ".csv";
 
-					result.open(resultfile.str().c_str());
+			result.open(resultfile.str().c_str());
 
-					typedef std::map<int, HyperLogLog>::iterator nodeit;
-					for (nodeit iterator = compactLocationSummary.begin();
-							iterator != compactLocationSummary.end(); iterator++) {
-						result << iterator->first << ","<< iterator->second.estimate()<<"\n";
+			typedef std::map<int, HyperLogLog>::iterator nodeit;
+			for (nodeit iterator = compactLocationSummary.begin();
+					iterator != compactLocationSummary.end(); iterator++) {
+				result << iterator->first << ","<< iterator->second.estimate()<<"\n";
 
-					}
-					result.close();
-				}
-
+			}
+			result.close();
+		}
 
 	}
 
-	void FindInflunceApproxUnitFreq(int wp, int k,bool write,bool find) {
+	void FindInflunceApproxUnitFreq(int wp, int k, bool write, bool find) {
 		long window = wp * 60 * 60;
 
 		vector<string> temp;
@@ -494,7 +497,7 @@ public:
 		int srcLoc;
 		string destLoc;
 		map<int, long> newuser;
-		cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
+		//cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 		typedef std::map<int, long>::iterator it_type;
 		for (int i = 0; i < datasize - 1; i++) {
 			userid = data[i].user;
@@ -537,9 +540,11 @@ public:
 				//cleanup(checkintime, window, false);
 			}
 		} //end of data for loop
-		  //std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()<<" "<<compactLocationSummary.size() << " memory "<<getValue() << std::endl;
-		if(write) {
+//std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << " "
+		<< compactLocationSummary.size() << " memory " << getValue()
+		<< std::endl;
+		if (write) {
 			ofstream result;
 			stringstream resultfile;
 			resultfile << outfile << "Approx_w" << window << ".csv";
@@ -549,18 +554,19 @@ public:
 			typedef std::map<int, HyperLogLog>::iterator nodeit;
 			for (nodeit iterator = compactLocationSummary.begin();
 					iterator != compactLocationSummary.end(); iterator++) {
-				result << iterator->first << ","<< iterator->second.estimate()<<"\n";
+				result << iterator->first << "," << iterator->second.estimate() << "\n";
 
 			}
 			result.close();
 		}
 
-		//finding top k
-		if(find) {
+//finding top k
+		if (find) {
 			findseed(outfile, k);
 		}
 	}
-	void FindInflunceWeigthed(int wp,bool isforward,bool withFriend,bool monitorTime) {
+	void FindInflunceWeigthed(int wp, bool isforward, bool withFriend,
+			bool monitorTime) {
 
 		window = 0;
 
@@ -605,7 +611,7 @@ public:
 		map<int, long> newuser;
 		map<int, HyperLogLog> newlochll;
 		typedef std::map<int, long>::iterator it_type;
-		if(monitorTime) {
+		if (monitorTime) {
 			mtimer.Start();
 		}
 		for (int i = 0; i < datasize - 1; i++) {
@@ -637,40 +643,44 @@ public:
 								== weigthedLocationSummary.end()) {
 							newlochll.clear();
 							locationnode newlocation;
-							newlocation.influenceset=newlochll;
-							newlocation.locationid=srcLoc;
+							newlocation.influenceset = newlochll;
+							newlocation.locationid = srcLoc;
 							HyperLogLog nhll(numberofbuckets);
-							newlocation.visitor=nhll;
+							newlocation.visitor = nhll;
 
 							weigthedLocationSummary[srcLoc] = newlocation;
 						}
-						if(withFriend) {
-							if(friendmap.find(userid)!=friendmap.end()) {
-								weigthedLocationSummary[srcLoc].visitor.merge(friendmap[userid]);
+						if (withFriend) {
+							if (friendmap.find(userid) != friendmap.end()) {
+								weigthedLocationSummary[srcLoc].visitor.merge(
+										friendmap[userid]);
 							}
 						}
-						ithll = weigthedLocationSummary[srcLoc].influenceset.find(destLoc);
-						if (ithll == weigthedLocationSummary[srcLoc].influenceset.end()) {
+						ithll = weigthedLocationSummary[srcLoc].influenceset.find(
+								destLoc);
+						if (ithll
+								== weigthedLocationSummary[srcLoc].influenceset.end()) {
 							HyperLogLog hll(numberofbuckets);
 							hll.add(userid.c_str(), userid.size());
-							if(withFriend) {
-								if(friendmap.find(userid)!=friendmap.end()) {
+							if (withFriend) {
+								if (friendmap.find(userid) != friendmap.end()) {
 									hll.merge(friendmap[userid]);
 								}
 							}
 							weigthedLocationSummary[srcLoc].influenceset[destLoc] = hll;
 						} else {
-							weigthedLocationSummary[srcLoc].influenceset[destLoc].add(userid.c_str(),
-									userid.size());
-							if(withFriend) {
-								if(friendmap.find(userid)!=friendmap.end()) {
-									weigthedLocationSummary[srcLoc].influenceset[destLoc]
-									.merge(friendmap[userid]);
+							weigthedLocationSummary[srcLoc].influenceset[destLoc].add(
+									userid.c_str(), userid.size());
+							if (withFriend) {
+								if (friendmap.find(userid) != friendmap.end()) {
+									weigthedLocationSummary[srcLoc].influenceset[destLoc].merge(
+											friendmap[userid]);
 								}
 							}
 						}
 
-						weigthedLocationSummary[srcLoc].visitor.add(userid.c_str(),userid.length());
+						weigthedLocationSummary[srcLoc].visitor.add(userid.c_str(),
+								userid.length());
 
 					}
 				} //end of for loop
@@ -684,22 +694,24 @@ public:
 			if (i % 100000 == 0) {
 				//std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
-			}if(monitorTime) {
+			}
+			if (monitorTime) {
 				if (i % 1000 == 0) {
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedSeconds())+to_string(getValue())+"\n");
+					monitordata.push_back(
+							to_string(i) + "," + to_string(mtimer.LiveElapsedSeconds())
+							+ to_string(getValue()) + "\n");
 					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
 			}
 
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
-		<< std::endl;
-		if(monitorTime) {
-			writeData(monitordata,datafolder+"monitorNW_"+to_string(wp)+".csv");
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
+		if (monitorTime) {
+			writeData(monitordata, datafolder + "monitorNW_" + to_string(wp) + ".csv");
 		}
 	}
-	void FindInflunceApprox(int wp, bool isforward,bool monitorTime) {
+	void FindInflunceApprox(int wp, bool isforward, bool monitorTime) {
 		window = 0;
 
 		window = wp * 60 * 60;
@@ -731,8 +743,8 @@ public:
 			sort(data.begin(), data.end());
 		}
 		int datasize = data.size();
-		//	std::cout << "read and sorted data " << datasize << " in "
-		//<< timer.LiveElapsedMilliseconds() << std::endl;
+//	std::cout << "read and sorted data " << datasize << " in "
+//<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
 
 		timer.Start();
@@ -741,7 +753,7 @@ public:
 		string userid;
 		long diff;
 		int srcLoc, destLoc;
-		if(monitorTime) {
+		if (monitorTime) {
 			mtimer.Start();
 		}
 		typedef std::map<int, long>::iterator it_type;
@@ -770,8 +782,7 @@ public:
 					}
 					if (diff < window) {
 						newuser[it->first] = it->second;
-						if (locationSummary.find(srcLoc)
-								== locationSummary.end()) {
+						if (locationSummary.find(srcLoc) == locationSummary.end()) {
 							newlochll.clear();
 
 							locationSummary[srcLoc] = newlochll;
@@ -799,19 +810,20 @@ public:
 				//std::cout << i << " " << userSummary.size() << std::endl;
 				cleanup(checkintime, window, isforward);
 			}
-			if(monitorTime) {
+			if (monitorTime) {
 				if (i % 1000 == 0) {
-					monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedSeconds())+to_string(getValue())+"\n");
+					monitordata.push_back(
+							to_string(i) + "," + to_string(mtimer.LiveElapsedSeconds())
+							+ to_string(getValue()) + "\n");
 					//monitordata.push_back(to_string(i)+","+to_string(mtimer.LiveElapsedMilliseconds())+"\n");
 					mtimer.Start();
 				}
 			}
 
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
-		<< std::endl;
-		if(monitorTime) {
-			writeData(monitordata,datafolder+"monitorNW_"+to_string(wp)+".csv");
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
+		if (monitorTime) {
+			writeData(monitordata, datafolder + "monitorNW_" + to_string(wp) + ".csv");
 		}
 	}
 	void FindInflunceExact(int wp, bool isforward) {
@@ -910,8 +922,7 @@ public:
 				cleanup(checkintime, window, isforward);
 			}
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
-		<< std::endl;
+		std::cout << "finished parsing " << timer.LiveElapsedSeconds() << std::endl;
 	}
 
 	void queryAll() {
@@ -930,8 +941,7 @@ public:
 
 		}
 		rfile.close();
-		std::cout << "finished querying " << timer.LiveElapsedSeconds()
-		<< std::endl;
+		std::cout << "finished querying " << timer.LiveElapsedSeconds() << std::endl;
 	}
 
 	void queryAll(int freq) {
@@ -945,11 +955,10 @@ public:
 		int count = 0;
 		locationit iterator;
 		resit it;
-		for ( iterator = locationSummary.begin();
-				iterator != locationSummary.end(); iterator++) {
+		for (iterator = locationSummary.begin(); iterator != locationSummary.end();
+				iterator++) {
 
-			for ( it = iterator->second.begin();
-					it != iterator->second.end(); it++) {
+			for (it = iterator->second.begin(); it != iterator->second.end(); it++) {
 				if (it->second.estimate() > freq) {
 					count++;
 				}
@@ -960,23 +969,21 @@ public:
 			count = 0;
 		}
 		rfile.close();
-		std::cout << "finished querying " << timer.LiveElapsedSeconds()
-		<< std::endl;
+		std::cout << "finished querying " << timer.LiveElapsedSeconds() << std::endl;
 	}
 	void queryExact(int freq) {
 		Platform::Timer timer;
 		timer.Start();
-		typedef std::map<int, map<int, set<string>>>::iterator locationit;
+		typedef std::map<int, map<int, set<string>>> ::iterator locationit;
 		typedef std::map<int, set<string>>::iterator resit;
 		int count = 0;
 		locationit iterator;
 		resit it;
 
-		for ( iterator = exactLocationSummary.begin();
+		for (iterator = exactLocationSummary.begin();
 				iterator != exactLocationSummary.end(); iterator++) {
 			set<int> locations;
-			for ( it = iterator->second.begin();
-					it != iterator->second.end(); it++) {
+			for (it = iterator->second.begin(); it != iterator->second.end(); it++) {
 				if (it->second.size() > freq) {
 					locations.insert(it->first);
 					count++;
@@ -984,24 +991,25 @@ public:
 				}
 
 			}
-			exactCompactLocationSummary[iterator->first]=locations;
+			exactCompactLocationSummary[iterator->first] = locations;
 			count = 0;
 		}
 
 	}
 
-	void queryInflunceSet(string file,int k,string outputfile) {
+	void queryInflunceSet(string file, int k, string outputfile) {
 
-		vector<int> keys=readKeys(file,k);
+		vector<int> keys = readKeys(file, k);
 		set<int> result;
-		for(int temp:keys) {
-			result.insert(exactCompactLocationSummary[temp].begin(),exactCompactLocationSummary[temp].end());
+		for (int temp : keys) {
+			result.insert(exactCompactLocationSummary[temp].begin(),
+					exactCompactLocationSummary[temp].end());
 		}
 		vector<string> data;
-		for(int t:result) {
-			data.push_back(to_string(t)+"\n");
+		for (int t : result) {
+			data.push_back(to_string(t) + "\n");
 		}
-		writeData(data,outputfile);
+		writeData(data, outputfile);
 
 	}
 	void queryWeighted(int freq) {
@@ -1016,11 +1024,11 @@ public:
 		locationit iterator;
 		resit it;
 		locationnode lntemp;
-		for ( iterator = weigthedLocationSummary.begin();
+		for (iterator = weigthedLocationSummary.begin();
 				iterator != weigthedLocationSummary.end(); iterator++) {
-			lntemp=iterator->second;
-			for ( it = lntemp.influenceset.begin();
-					it != lntemp.influenceset.end(); it++) {
+			lntemp = iterator->second;
+			for (it = lntemp.influenceset.begin(); it != lntemp.influenceset.end();
+					it++) {
 				if (it->second.estimate() > freq) {
 					count++;
 				}
@@ -1031,8 +1039,7 @@ public:
 			count = 0;
 		}
 		rfile.close();
-		std::cout << "finished querying " << timer.LiveElapsedSeconds()
-		<< std::endl;
+		std::cout << "finished querying " << timer.LiveElapsedSeconds() << std::endl;
 	}
 
 	void findseed(int freq, int k) {
@@ -1045,15 +1052,13 @@ public:
 		int count = 0;
 		locationit iterator;
 		resit it;
-		for ( iterator = locationSummary.begin();
-				iterator != locationSummary.end(); iterator++) {
+		for (iterator = locationSummary.begin(); iterator != locationSummary.end();
+				iterator++) {
 			HyperLogLog hll(numberofbuckets);
 
-			for ( it = iterator->second.begin();
-					it != iterator->second.end(); it++) {
+			for (it = iterator->second.begin(); it != iterator->second.end(); it++) {
 				if (it->second.estimate() > freq) {
-					hll.add(to_string(it->first).c_str(),
-							to_string(it->first).size());
+					hll.add(to_string(it->first).c_str(), to_string(it->first).size());
 					count++;
 				}
 
@@ -1068,12 +1073,11 @@ public:
 		std::cout << "finished creating compact list " << timer.LiveElapsedSeconds()
 		<< std::endl;
 		timer.Start();
-		findseed(outfile + "_w" + to_string(window) + "_f" + to_string(freq),
-				k);
+		findseed(outfile + "_w" + to_string(window) + "_f" + to_string(freq), k);
 		std::cout << "finished searching seeds " << timer.LiveElapsedSeconds()
 		<< std::endl;
 	}
-	void findWeigthedSeed(string keyfile, int minFreq,int seedc) {
+	void findWeigthedSeed(string keyfile, int minFreq, int seedc) {
 		locationnode lnd;
 		node nd;
 
@@ -1088,65 +1092,65 @@ public:
 		typedef std::map<int, locationnode>::iterator nodeit;
 		typedef std::map<int, HyperLogLog>::iterator infsetit;
 		int candidatWeightGain;
-		int bestId=0;
-		int candidateSizegain=0;
-		int bestSizeGain=-1;
+		int bestId = 0;
+		int candidateSizegain = 0;
+		int bestSizeGain = -1;
 		int count;
 		for (nodeit iterator = weigthedLocationSummary.begin();
 				iterator != weigthedLocationSummary.end(); iterator++) {
 			HyperLogLog hll(numberofbuckets);
-			nd.nodeid=iterator->first;
+			nd.nodeid = iterator->first;
 
 			for (infsetit it = iterator->second.influenceset.begin();
 					it != iterator->second.influenceset.end(); it++) {
 				if (it->second.estimate() > minFreq) {
-					hll.add(to_string(it->first).c_str(),
-							to_string(it->first).size());
+					hll.add(to_string(it->first).c_str(), to_string(it->first).size());
 					count++;
 				}
 
 			}
-			nd.nodeset=hll;
-			nd.estimate=hll.estimate();
-			count=0;
-			if(nd.estimate>2) {
+			nd.nodeset = hll;
+			nd.estimate = hll.estimate();
+			count = 0;
+			if (nd.estimate > 2) {
 				nodelist.push_back(nd);
 			}
 		}
 		sort(nodelist.begin(), nodelist.end(), sortByEstimate);
-		std::cout << "finished compacting "<<nodelist.size()<<" time " << timer.LiveElapsedSeconds()
-		<< std::endl;
-		for(int i=0;i<seedc;i++) {
+		std::cout << "finished compacting " << nodelist.size() << " time "
+		<< timer.LiveElapsedSeconds() << std::endl;
+		for (int i = 0; i < seedc; i++) {
 
-			bestId=0;
-			bestSizeGain=-1;
-			candidateSizegain=0;
-			candidatWeightGain=0;
+			bestId = 0;
+			bestSizeGain = -1;
+			candidateSizegain = 0;
+			candidatWeightGain = 0;
 			//	for (nodeit iterator = weigthedLocationSummary.begin();
 			//		iterator != weigthedLocationSummary.end(); iterator++) {
-			for(node tmp:nodelist) {
+			for (node tmp : nodelist) {
 				HyperLogLog hll;
 
-				if(wsl.selectednodes.find(tmp.nodeid)==wsl.selectednodes.end()) {
+				if (wsl.selectednodes.find(tmp.nodeid) == wsl.selectednodes.end()) {
 
-					lnd=weigthedLocationSummary[tmp.nodeid];
-					candidateSizegain=sizeGain(wsl,tmp);
-					if(candidateSizegain>bestSizeGain) {
-						bestId=tmp.nodeid;
-						bestSizeGain=candidateSizegain;
-					} else if(candidateSizegain==bestSizeGain) {
+					lnd = weigthedLocationSummary[tmp.nodeid];
+					candidateSizegain = sizeGain(wsl, tmp);
+					if (candidateSizegain > bestSizeGain) {
+						bestId = tmp.nodeid;
+						bestSizeGain = candidateSizegain;
+					} else if (candidateSizegain == bestSizeGain) {
 						//if size gain is same check for weight gain
-						candidatWeightGain=getweightGain(wsl,weigthedLocationSummary[bestId]);
-						if(candidatWeightGain<getweightGain(wsl,lnd)) {
-							bestId=tmp.nodeid;
+						candidatWeightGain = getweightGain(wsl,
+								weigthedLocationSummary[bestId]);
+						if (candidatWeightGain < getweightGain(wsl, lnd)) {
+							bestId = tmp.nodeid;
 						}
 					}
 				}
 			} //end of for loop
 			  //add the survived candidate to the seed
 
-			addSeed(wsl,weigthedLocationSummary[bestId]);
-			seedlist[i]=(bestId);
+			addSeed(wsl, weigthedLocationSummary[bestId]);
+			seedlist[i] = (bestId);
 
 		}
 		std::cout << "finished finding seed " << timer.LiveElapsedSeconds()
@@ -1171,34 +1175,38 @@ private:
 		return wsloc.influencedLoc.estimate()-oldsize;
 
 	}
-	void addSeed(weigthedseedLocation& wsloc,locationnode locnode) {
+	void addSeed(weigthedseedLocation& wsloc, locationnode locnode) {
 
 		wsloc.selectednodes.insert(locnode.locationid);
-		typedef std::map<int, HyperLogLog> :: iterator influencesetit;
-		for(influencesetit ifit=locnode.influenceset.begin();ifit!=locnode.influenceset.end();ifit++) {
-			if(wsloc.seedInfluence.find(ifit->first)==wsloc.seedInfluence.end()) {
-				wsloc.seedInfluence[ifit->first]=ifit->second;
+		typedef std::map<int, HyperLogLog>::iterator influencesetit;
+		for (influencesetit ifit = locnode.influenceset.begin();
+				ifit != locnode.influenceset.end(); ifit++) {
+			if (wsloc.seedInfluence.find(ifit->first) == wsloc.seedInfluence.end()) {
+				wsloc.seedInfluence[ifit->first] = ifit->second;
 			} else {
 				wsloc.seedInfluence[ifit->first].merge(ifit->second);
 			}
-			wsloc.influencedLoc.add(to_string(locnode.locationid).c_str(),to_string(locnode.locationid).length());
+			wsloc.influencedLoc.add(to_string(locnode.locationid).c_str(),
+					to_string(locnode.locationid).length());
 		}
-		wsloc.totalweight=getTotalWeigth(wsloc);
-		//	return wsloc;
+		wsloc.totalweight = getTotalWeigth(wsloc);
+//	return wsloc;
 	}
 	double getTotalWeigth(weigthedseedLocation wsloc) {
 		double weight;
 
-		for(int n:wsloc.selectednodes) {
-			weight=weight+wsloc.seedInfluence[n].estimate()/weigthedLocationSummary[n].visitor.estimate();
+		for (int n : wsloc.selectednodes) {
+			weight = weight
+			+ wsloc.seedInfluence[n].estimate()
+			/ weigthedLocationSummary[n].visitor.estimate();
 		}
 		return weight;
 	}
-	double getweightGain(weigthedseedLocation wsloc,locationnode locnode) {
-		double oldweight=getTotalWeigth(wsloc);
-		addSeed(wsloc,locnode);
+	double getweightGain(weigthedseedLocation wsloc, locationnode locnode) {
+		double oldweight = getTotalWeigth(wsloc);
+		addSeed(wsloc, locnode);
 
-		return getTotalWeigth(wsloc)-oldweight;
+		return getTotalWeigth(wsloc) - oldweight;
 	}
 	void cleanup(long checkintime, long window, bool isforward) {
 
