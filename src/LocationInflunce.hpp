@@ -607,6 +607,8 @@ public:
 		long checkintime;
 		string userid;
 		long diff;
+		HyperLogLog nhll(numberofbuckets);
+		HyperLogLog hll(numberofbuckets);
 		int srcLoc, destLoc;
 		map<int, long> newuser;
 		map<int, HyperLogLog> newlochll;
@@ -645,7 +647,7 @@ public:
 							locationnode newlocation;
 							newlocation.influenceset = newlochll;
 							newlocation.locationid = srcLoc;
-							HyperLogLog nhll(numberofbuckets);
+
 							newlocation.visitor = nhll;
 
 							weigthedLocationSummary[srcLoc] = newlocation;
@@ -660,7 +662,7 @@ public:
 								destLoc);
 						if (ithll
 								== weigthedLocationSummary[srcLoc].influenceset.end()) {
-							HyperLogLog hll(numberofbuckets);
+
 							hll.add(userid.c_str(), userid.size());
 							if (withFriend) {
 								if (friendmap.find(userid) != friendmap.end()) {
@@ -1078,7 +1080,7 @@ public:
 		<< std::endl;
 	}
 	void findWeigthedSeed(string keyfile, int minFreq, int seedc) {
-		locationnode lnd;
+		//locationnode lnd;
 		node nd;
 
 		Platform::Timer timer;
@@ -1096,9 +1098,10 @@ public:
 		int candidateSizegain = 0;
 		int bestSizeGain = -1;
 		int count;
+		HyperLogLog hll(numberofbuckets);
 		for (nodeit iterator = weigthedLocationSummary.begin();
 				iterator != weigthedLocationSummary.end(); iterator++) {
-			HyperLogLog hll(numberofbuckets);
+
 			nd.nodeid = iterator->first;
 
 			for (infsetit it = iterator->second.influenceset.begin();
@@ -1128,11 +1131,11 @@ public:
 			//	for (nodeit iterator = weigthedLocationSummary.begin();
 			//		iterator != weigthedLocationSummary.end(); iterator++) {
 			for (node tmp : nodelist) {
-				HyperLogLog hll;
+
 
 				if (wsl.selectednodes.find(tmp.nodeid) == wsl.selectednodes.end()) {
 
-					lnd = weigthedLocationSummary[tmp.nodeid];
+					//lnd = weigthedLocationSummary[tmp.nodeid];
 					candidateSizegain = sizeGain(wsl, tmp);
 					if (candidateSizegain > bestSizeGain) {
 						bestId = tmp.nodeid;
@@ -1141,7 +1144,7 @@ public:
 						//if size gain is same check for weight gain
 						candidatWeightGain = getweightGain(wsl,
 								weigthedLocationSummary[bestId]);
-						if (candidatWeightGain < getweightGain(wsl, lnd)) {
+						if (candidatWeightGain < getweightGain(wsl, weigthedLocationSummary[tmp.nodeid])) {
 							bestId = tmp.nodeid;
 						}
 					}
@@ -1328,7 +1331,8 @@ private:
 			selectednodes.insert(newseed);
 			is.merge(newinf);
 		}
-
+		std::cout << "finished finding seed " << timer.LiveElapsedSeconds()
+				<< std::endl;
 		ofstream result;
 		stringstream resultfile;
 		resultfile << keyfile << "_s" << seedc << ".keys";

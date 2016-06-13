@@ -100,9 +100,10 @@ int main(int argc, char *argv[]) {
 		}
 
 	}
-
+	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
+//	string folder = "D:\\dataset\\new\\NYC\\" + file + "\\";
 	//string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
 	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";
 	string ifile = folder + "checkins.csv";
@@ -114,12 +115,12 @@ int main(int argc, char *argv[]) {
 		li.findtopKusingNaive(ofile, numberOfSeed);
 	} else if (cmd.compare("backward") == 0) {
 
-		li.FindInflunceApproxUnitFreqBackward(window, true);
+		li.FindInflunceApproxUnitFreqBackwardNew(window, true);
 	} else if (cmd.compare("accuracy") == 0) {
 		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
 		li.FindInflunceExactUnitFreq(window, isforward, true);
 	} else if (cmd.compare("unitCompare") == 0) {
-		li.FindInflunceApproxUnitFreq(window, numberOfSeed, true, false);
+		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, false);
 
 	} else if (cmd.compare("influnceset") == 0) {
 		std::cout << "finding influnce set " << file << " window: " << window
@@ -171,10 +172,11 @@ int main(int argc, char *argv[]) {
 		li.FindInflunceExact(window, true);
 		li.queryExact(minFreq);
 		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys", numberOfSeed,
-				folder + pathSeperator + seedfile + ".spread");
+				folder + pathSeperator + seedfile + "_f5.spread");
 	} else {
 		std::cout << "no command found" << std::endl;
 	}
+	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
 	//li.topK(minFreq, k);
