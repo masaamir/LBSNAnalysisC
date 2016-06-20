@@ -24,19 +24,22 @@ using namespace lif;
 #include "util.h"
 using namespace util;
 int main(int argc, char *argv[]) {
-//string file="foursquare";
-	string file = "Gowalla";
+string file="foursquare";
+//	string file = "Gowalla";
 	string pathSeperator = "\\";
 //string file="BrightKi";
 	int window = 100; //hour
 	int bucket = 8;
 	int numberOfSeed = 100;
-	int minFreq = 1;
+
+	double tau;
 	bool withFriend = false;
 	bool isforward = true;
 	bool monitor = false;
-	bool weigthed = false;
-	string cmd = "";
+	bool weigthed = true;
+	bool isRelative = true;
+	double alpha =0.9;
+	string cmd = "seed";
 	string forward = "";
 	string seedfile = "";
 	if (argc > 0) {
@@ -73,6 +76,12 @@ int main(int argc, char *argv[]) {
 				} else if (extra.compare("-f=false") == 0) {
 					weigthed = false;
 				}
+			}else if (extra[1] == 'r') {
+				if (extra.compare("-r=true") == 0) {
+					isRelative = true;
+				} else if (extra.compare("-f=false") == 0) {
+					isRelative = false;
+				}
 			} else if (extra[1] == 'c') {
 				if (extra.compare("-c=1") == 0) {
 					cmd = "influnceset";
@@ -93,13 +102,16 @@ int main(int argc, char *argv[]) {
 				seedfile = extra.substr(3, extra.length());
 			} else if (extra[1] == 'k') {
 				numberOfSeed = atoi(extra.substr(3, extra.length()).c_str());
-			} else if (extra[1] == 'l') {
-				minFreq = atoi(extra.substr(3, extra.length()).c_str());
+			} else if (extra[1] == 't') {
+				tau = atof(extra.substr(3, extra.length()).c_str());
+			}else if (extra[1] == 'a') {
+				alpha = atof(extra.substr(3, extra.length()).c_str());
 			}
 
 		}
 
 	}
+	cout << cmd << endl;
 	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
@@ -123,43 +135,47 @@ int main(int argc, char *argv[]) {
 		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, false);
 
 	} else if (cmd.compare("influnceset") == 0) {
+
 		std::cout << "finding influnce set " << file << " window: " << window
-				<< " frequency: " << minFreq << " weighted:" << weigthed
+				<< " frequency: " << tau << " weighted:" << weigthed
 				<< " with friend:" << withFriend << std::endl;
 		if (weigthed) {
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
-			li.FindInflunceWeigthed(window, isforward, withFriend, monitor);
+			li.FindInflunceWeigthed(window,  withFriend, monitor);
 
-			li.queryWeighted(minFreq);
+			li.queryWeighted(tau,isRelative);
 		} else {
 			li.FindInflunceApprox(window, isforward, monitor);
-			li.queryAll(minFreq);
+			li.queryAll(tau);
 		}
 	} else if (cmd.compare("seed") == 0) {
-		std::cout << "finding " << numberOfSeed << " seed for " << file
-				<< " window: " << window << " frequency: " << minFreq
+		std::cout << " finding " << numberOfSeed << " seed for " << file
+				<< " window: " << window << " frequency: " << tau
 				<< " weighted:" << weigthed << " with friend:" << withFriend
 				<< std::endl;
 		if (weigthed) {
+			withFriend=false;
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
-			li.FindInflunceWeigthed(window, isforward, withFriend, monitor);
+			li.FindInflunceWeigthed(window,  withFriend, monitor);
 			if (withFriend) {
 				li.findWeigthedSeed(
-						ofile + "Weighted_w" + to_string(window) + "_f"
-								+ to_string(minFreq), minFreq, numberOfSeed);
+						ofile + "WeightedFriend_w" + to_string(window) + "_f"
+								+ to_string(tau), tau, numberOfSeed,
+						alpha, isRelative);
 			} else {
 				li.findWeigthedSeed(
-						ofile + "WeightedFriend_w" + to_string(window) + "_f"
-								+ to_string(minFreq), minFreq, numberOfSeed);
+						ofile + "Weighted_w" + to_string(window) + "_f"
+								+ to_string(tau), tau, numberOfSeed,
+						alpha, isRelative);
 			}
 		} else {
-			if (minFreq > 1) {
+			if (tau > 1) {
 				li.FindInflunceApprox(window, isforward, monitor);
-				li.findseed(minFreq, numberOfSeed);
+				li.findseed(tau, numberOfSeed);
 			} else {
 				li.FindInflunceApproxUnitFreq(window, numberOfSeed, false,
 						true);
@@ -168,11 +184,11 @@ int main(int argc, char *argv[]) {
 	} else if (cmd.compare("spread") == 0) {
 		std::cout << "finding spread of " << numberOfSeed << " seed for "
 				<< seedfile << " window: " << window << " frequency: "
-				<< minFreq << std::endl;
+				<< tau << std::endl;
 		li.FindInflunceExact(window, true);
-		li.queryExact(minFreq);
-		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys", numberOfSeed,
-				folder + pathSeperator + seedfile + "_f5.spread");
+		li.queryExact(tau);
+		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys",
+				numberOfSeed, folder + pathSeperator + seedfile + "_f5.spread");
 	} else {
 		std::cout << "no command found" << std::endl;
 	}
