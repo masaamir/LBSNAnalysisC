@@ -24,7 +24,7 @@ using namespace lif;
 #include "util.h"
 using namespace util;
 int main(int argc, char *argv[]) {
-string file="foursquare";
+	string file = "foursquare";
 //	string file = "Gowalla";
 	string pathSeperator = "\\";
 //string file="BrightKi";
@@ -37,8 +37,8 @@ string file="foursquare";
 	bool isforward = true;
 	bool monitor = false;
 	bool weigthed = true;
-	bool isRelative = true;
-	double alpha =0.9;
+	bool isRelative = false;
+	double alpha = 0.9;
 	string cmd = "seed";
 	string forward = "";
 	string seedfile = "";
@@ -76,7 +76,7 @@ string file="foursquare";
 				} else if (extra.compare("-f=false") == 0) {
 					weigthed = false;
 				}
-			}else if (extra[1] == 'r') {
+			} else if (extra[1] == 'r') {
 				if (extra.compare("-r=true") == 0) {
 					isRelative = true;
 				} else if (extra.compare("-f=false") == 0) {
@@ -97,6 +97,8 @@ string file="foursquare";
 					cmd = "naive";
 				} else if (extra.compare("-c=7") == 0) {
 					cmd = "backward";
+				} else if (extra.compare("-c=8") == 0) {
+					cmd = "exact";
 				}
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
@@ -104,14 +106,14 @@ string file="foursquare";
 				numberOfSeed = atoi(extra.substr(3, extra.length()).c_str());
 			} else if (extra[1] == 't') {
 				tau = atof(extra.substr(3, extra.length()).c_str());
-			}else if (extra[1] == 'a') {
+			} else if (extra[1] == 'a') {
 				alpha = atof(extra.substr(3, extra.length()).c_str());
 			}
 
 		}
 
 	}
-	cout << cmd << endl;
+	//cout << cmd << endl;
 	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
 	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
@@ -128,9 +130,27 @@ string file="foursquare";
 	} else if (cmd.compare("backward") == 0) {
 
 		li.FindInflunceApproxUnitFreqBackwardNew(window, true);
+	} else if (cmd.compare("exact") == 0) {
+		if (withFriend) {
+			li.generateExactFriendshipData(friendfile);
+		}
+		li.FindInflunceExact(window, withFriend);
 	} else if (cmd.compare("accuracy") == 0) {
-		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
-		li.FindInflunceExactUnitFreq(window, isforward, true);
+		//	li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
+		//li.FindInflunceExactUnitFreq(window, isforward, true);
+		cout << "accuracy for " << file << " @ " << window << " with tau= "
+				<< tau << " and withFriend=" << withFriend << " and isRelative="
+				<< isRelative << endl;
+		if (withFriend) {
+			li.generateExactFriendshipData(friendfile);
+			li.generateFriendshipData(friendfile);
+		}
+		li.FindInflunceExact(window, withFriend);
+		li.queryAllExact(tau, isRelative);
+
+		li.FindInflunceWeigthed(window, withFriend, false);
+		li.queryWeighted(tau, isRelative);
+
 	} else if (cmd.compare("unitCompare") == 0) {
 		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, false);
 
@@ -143,12 +163,12 @@ string file="foursquare";
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
-			li.FindInflunceWeigthed(window,  withFriend, monitor);
+			li.FindInflunceWeigthed(window, withFriend, monitor);
 
-			li.queryWeighted(tau,isRelative);
+			li.queryWeighted(tau, isRelative);
 		} else {
 			li.FindInflunceApprox(window, isforward, monitor);
-			li.queryAll(tau);
+			li.queryAll(tau, false);
 		}
 	} else if (cmd.compare("seed") == 0) {
 		std::cout << " finding " << numberOfSeed << " seed for " << file
@@ -156,21 +176,21 @@ string file="foursquare";
 				<< " weighted:" << weigthed << " with friend:" << withFriend
 				<< std::endl;
 		if (weigthed) {
-			withFriend=false;
+			withFriend = false;
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
-			li.FindInflunceWeigthed(window,  withFriend, monitor);
+			li.FindInflunceWeigthed(window, withFriend, monitor);
 			if (withFriend) {
 				li.findWeigthedSeed(
 						ofile + "WeightedFriend_w" + to_string(window) + "_f"
-								+ to_string(tau), tau, numberOfSeed,
-						alpha, isRelative);
+								+ to_string(tau), tau, numberOfSeed, alpha,
+						isRelative);
 			} else {
 				li.findWeigthedSeed(
 						ofile + "Weighted_w" + to_string(window) + "_f"
-								+ to_string(tau), tau, numberOfSeed,
-						alpha, isRelative);
+								+ to_string(tau), tau, numberOfSeed, alpha,
+						isRelative);
 			}
 		} else {
 			if (tau > 1) {
@@ -183,9 +203,9 @@ string file="foursquare";
 		}
 	} else if (cmd.compare("spread") == 0) {
 		std::cout << "finding spread of " << numberOfSeed << " seed for "
-				<< seedfile << " window: " << window << " frequency: "
-				<< tau << std::endl;
-		li.FindInflunceExact(window, true);
+				<< seedfile << " window: " << window << " frequency: " << tau
+				<< std::endl;
+		li.FindInflunceExact(window, withFriend);
 		li.queryExact(tau);
 		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys",
 				numberOfSeed, folder + pathSeperator + seedfile + "_f5.spread");

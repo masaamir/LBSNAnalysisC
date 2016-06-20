@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "murmur3.h"
+#include <math.h>
 
 #define HLL_HASH_SEED 313
 
@@ -141,7 +142,7 @@ public:
 		} else if (estimate > (1.0 / 30.0) * pow_2_32) {
 			estimate = neg_pow_2_32 * log(1.0 - (estimate / pow_2_32));
 		}
-		return estimate;
+		return round(estimate);
 	}
 
 	/**
