@@ -118,8 +118,8 @@ public:
 				friendmap[temp[0]] = newhll;
 			}
 		}
-		std::cout << "build friendship network : " << friendmap.size() << " "
-				<< timer.ElapsedMilliseconds() << std::endl;
+		//std::cout << "build friendship network : " << friendmap.size() << " "
+		//		<< timer.ElapsedMilliseconds() << std::endl;
 	}
 	void generateExactFriendshipData(string file) {
 		ifstream infile(file.c_str());
@@ -139,8 +139,8 @@ public:
 				exactfriendmap[temp[0]] = newset;
 			}
 		}
-		std::cout << "build friendship network : " << exactfriendmap.size()
-				<< " " << timer.ElapsedMilliseconds() << std::endl;
+		//std::cout << "build friendship network : " << exactfriendmap.size()
+			//	<< " " << timer.ElapsedMilliseconds() << std::endl;
 	}
 	void FindInflunceExactUnitFreq(int wp, bool isforward, bool write) {
 		window = 0;
@@ -644,8 +644,8 @@ public:
 		sort(data.begin(), data.end(), forward);
 
 		int datasize = data.size();
-		std::cout << "read and sorted data " << datasize << " in "
-				<< timer.LiveElapsedMilliseconds() << std::endl;
+	//	std::cout << "read and sorted data " << datasize << " in "
+		//		<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
 		vector<string> monitordata;
 		Platform::Timer mtimer;
@@ -736,7 +736,7 @@ public:
 
 			if (i % 100000 == 0) {
 				//std::cout << i << " " << userSummary.size() << std::endl;
-				//cleanup(checkintime, window, isforward);
+				cleanup(checkintime, window, true);
 			}
 			if (monitorTime) {
 				if (i % 1000 == 0) {

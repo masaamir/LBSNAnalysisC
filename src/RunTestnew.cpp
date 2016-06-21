@@ -99,6 +99,10 @@ int main(int argc, char *argv[]) {
 					cmd = "backward";
 				} else if (extra.compare("-c=8") == 0) {
 					cmd = "exact";
+				} else if (extra.compare("-c=9") == 0) {
+					cmd = "memoryExact";
+				} else if (extra.compare("-c=10") == 0) {
+					cmd = "memoryApprox";
 				}
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
@@ -114,11 +118,11 @@ int main(int argc, char *argv[]) {
 
 	}
 	//cout << cmd << endl;
-	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
+//	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
-	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
+	//string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 //	string folder = "D:\\dataset\\new\\NYC\\" + file + "\\";
-	//string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
+	string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
 	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";
 	string ifile = folder + "checkins.csv";
 	string ofile = folder + file;
@@ -151,6 +155,31 @@ int main(int argc, char *argv[]) {
 		li.FindInflunceWeigthed(window, withFriend, false);
 		li.queryWeighted(tau, isRelative);
 
+	} else if (cmd.compare("memoryExact") == 0) {
+		//	li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
+		//li.FindInflunceExactUnitFreq(window, isforward, true);
+		cout << "Memory Exact for " << file << " @ " << window << " with tau= "
+				<< tau << " and withFriend=" << withFriend << " and isRelative="
+				<< isRelative << endl;
+		if (withFriend) {
+			li.generateExactFriendshipData(friendfile);
+
+		}
+		li.FindInflunceExact(window, withFriend);
+		cout << "memory used : " << getValue() / 1024 << endl;
+	} else if (cmd.compare("memoryApprox") == 0) {
+		//	li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
+		//li.FindInflunceExactUnitFreq(window, isforward, true);
+		cout << "Memory Approx for " << file << " @ " << window << " with tau= "
+				<< tau << " and withFriend=" << withFriend << " and isRelative="
+				<< isRelative << endl;
+		if (withFriend) {
+
+			li.generateFriendshipData(friendfile);
+		}
+
+		li.FindInflunceWeigthed(window, withFriend, false);
+		cout << "memory used : " << getValue() / 1024 << endl;
 	} else if (cmd.compare("unitCompare") == 0) {
 		li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, false);
 
@@ -212,7 +241,7 @@ int main(int argc, char *argv[]) {
 	} else {
 		std::cout << "no command found" << std::endl;
 	}
-	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
+//	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 	//li.FindInflunceExact(window, isforward);
 	//std::this_thread::sleep_for(std::chrono::seconds(100));
 	//li.topK(minFreq, k);
