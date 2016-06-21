@@ -140,7 +140,7 @@ public:
 			}
 		}
 		//std::cout << "build friendship network : " << exactfriendmap.size()
-			//	<< " " << timer.ElapsedMilliseconds() << std::endl;
+		//	<< " " << timer.ElapsedMilliseconds() << std::endl;
 	}
 	void FindInflunceExactUnitFreq(int wp, bool isforward, bool write) {
 		window = 0;
@@ -626,7 +626,7 @@ public:
 		ifstream infile(datafile.c_str());
 		edge tempEdge;
 
-		std::cout << datafile << std::endl;
+		//	std::cout << datafile << std::endl;
 		string line;
 		Platform::Timer timer;
 		timer.Start();
@@ -644,7 +644,7 @@ public:
 		sort(data.begin(), data.end(), forward);
 
 		int datasize = data.size();
-	//	std::cout << "read and sorted data " << datasize << " in "
+		//	std::cout << "read and sorted data " << datasize << " in "
 		//		<< timer.LiveElapsedMilliseconds() << std::endl;
 		std::map<int, HyperLogLog>::iterator ithll;
 		vector<string> monitordata;
@@ -750,8 +750,8 @@ public:
 			}
 
 		} //end of data for loop
-		std::cout << "finished parsing " << timer.LiveElapsedSeconds()
-				<< std::endl;
+		  //  std::cout << "finished parsing " << timer.LiveElapsedSeconds()
+		  //  		<< std::endl;
 		if (monitorTime) {
 			writeData(monitordata,
 					datafolder + "monitorNW_" + to_string(wp) + ".csv");
@@ -1083,7 +1083,7 @@ public:
 		std::cout << "finished querying " << timer.LiveElapsedSeconds()
 				<< std::endl;
 	}
-	void queryExact(int freq) {
+	void queryExact(double freq, bool isRelative) {
 		Platform::Timer timer;
 		timer.Start();
 		typedef std::map<int, exactlocation>::iterator locationit;
@@ -1091,13 +1091,20 @@ public:
 		int count = 0;
 		locationit iterator;
 		resit it;
+		double inf = 0.0;
 
 		for (iterator = weigthedExactLocationSummary.begin();
 				iterator != weigthedExactLocationSummary.end(); iterator++) {
 			set<int> locations;
 			for (it = iterator->second.influenceset.begin();
 					it != iterator->second.influenceset.end(); it++) {
-				if (it->second.size() > freq) {
+				inf = it->second.size();
+				if (isRelative) {
+					inf =
+							inf
+									/ weigthedExactLocationSummary[it->first].visitor.size();
+				}
+				if (inf > freq) {
 					locations.insert(it->first);
 					count++;
 
@@ -1124,6 +1131,44 @@ public:
 		}
 		writeData(data, outputfile);
 
+	}
+	int getWeightedSpread(double tau, bool isrelative, string seedfile,
+			int seedc) {
+		vector<int> seeds = readKeys(seedfile, seedc);
+	//	cout<<seeds[9]<<" "<<seeds[0]<<" seed size"<<seeds.size()<<endl;
+		return getWeightedSpread(tau, isrelative, seeds);
+	}
+	int getWeightedSpread(double tau, bool isrelative, vector<int> seed) {
+		typedef std::map<int, HyperLogLog>::iterator resit;
+		resit it;
+		set<int> result;
+		map<int, HyperLogLog> influncedLoc;
+		double inf;
+		for (int loc : seed) {
+			for (it = weigthedLocationSummary[loc].influenceset.begin();
+					it != weigthedLocationSummary[loc].influenceset.end();
+					it++) {
+				if (influncedLoc.find(it->first) == influncedLoc.end()) {
+					HyperLogLog hll;
+					influncedLoc[it->first] = hll;
+				}
+
+				influncedLoc[it->first].merge(it->second);
+			}
+
+		}
+		for (it = influncedLoc.begin(); it != influncedLoc.end(); it++) {
+			inf = it->second.estimate();
+			if (isrelative) {
+				inf = inf
+						/ weigthedLocationSummary[it->first].visitor.estimate();
+			}
+			if (inf > tau) {
+
+				result.insert(it->first);
+			}
+		}
+		return result.size();
 	}
 	void queryWeighted(double tau, bool isrelative) {
 		Platform::Timer timer;
@@ -1282,13 +1327,13 @@ public:
 			}
 
 		}
-		std::cout << superl.totalweight << endl;
+
 		std::cout << "finished finding seed " << timer.LiveElapsedSeconds()
 				<< std::endl;
 		ofstream result;
 		stringstream resultfile;
 		resultfile << keyfile << "_s" << seedc << "_a" << alpha << ".keys";
-		std::cout << resultfile.str() << endl;
+		//std::cout << resultfile.str() << endl;
 		result.open(resultfile.str().c_str());
 		for (int n : seedlist) {
 			result << n << "\n";
@@ -1296,6 +1341,9 @@ public:
 		}
 
 		result.close();
+		int spread = getWeightedSpread(tau, isrelative, seedlist);
+		cout << "resultFor: expected spread " << spread << " for alpha: "
+				<< alpha << " seed count " << seedc << endl;
 		if (false) {
 			ofstream rank;
 			stringstream rankfile;
@@ -1546,7 +1594,7 @@ private:
 		ifstream infile(file.c_str());
 		vector<int> keys;
 		string line;
-		int count = 0;
+		int count = 1;
 		while (infile >> line) {
 			keys.push_back(atoi(line.c_str()));
 			count++;

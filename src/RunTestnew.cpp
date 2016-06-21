@@ -39,6 +39,8 @@ int main(int argc, char *argv[]) {
 	bool weigthed = true;
 	bool isRelative = false;
 	double alpha = 0.9;
+	double alphaArray[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 };
+	int seedArray[] = { 10, 20, 30, 40, 50 };
 	string cmd = "seed";
 	string forward = "";
 	string seedfile = "";
@@ -103,6 +105,8 @@ int main(int argc, char *argv[]) {
 					cmd = "memoryExact";
 				} else if (extra.compare("-c=10") == 0) {
 					cmd = "memoryApprox";
+				} else if (extra.compare("-c=11") == 0) {
+					cmd = "spreadWeighted";
 				}
 			} else if (extra[1] == 'p') {
 				seedfile = extra.substr(3, extra.length());
@@ -120,9 +124,9 @@ int main(int argc, char *argv[]) {
 	//cout << cmd << endl;
 //	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
-	//string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
+	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 //	string folder = "D:\\dataset\\new\\NYC\\" + file + "\\";
-	string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
+//	string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
 	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";
 	string ifile = folder + "checkins.csv";
 	string ofile = folder + file;
@@ -158,9 +162,9 @@ int main(int argc, char *argv[]) {
 	} else if (cmd.compare("memoryExact") == 0) {
 		//	li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
 		//li.FindInflunceExactUnitFreq(window, isforward, true);
-		cout << "Memory Exact for " << file << " @ " << window << " with tau= "
-				<< tau << " and withFriend=" << withFriend << " and isRelative="
-				<< isRelative << endl;
+		cout << "Memory Exact for " << file << " @ " << window
+				<< " and withFriend=" << withFriend << endl;
+
 		if (withFriend) {
 			li.generateExactFriendshipData(friendfile);
 
@@ -170,9 +174,8 @@ int main(int argc, char *argv[]) {
 	} else if (cmd.compare("memoryApprox") == 0) {
 		//	li.FindInflunceApproxUnitFreq(window, numberOfSeed, false, true);
 		//li.FindInflunceExactUnitFreq(window, isforward, true);
-		cout << "Memory Approx for " << file << " @ " << window << " with tau= "
-				<< tau << " and withFriend=" << withFriend << " and isRelative="
-				<< isRelative << endl;
+		cout << "Memory Approx for " << file << " @ " << window
+				<< " and withFriend=" << withFriend << endl;
 		if (withFriend) {
 
 			li.generateFriendshipData(friendfile);
@@ -200,27 +203,45 @@ int main(int argc, char *argv[]) {
 			li.queryAll(tau, false);
 		}
 	} else if (cmd.compare("seed") == 0) {
-		std::cout << " finding " << numberOfSeed << " seed for " << file
+		std::cout << " resultFor: " << numberOfSeed << " seed for " << file
 				<< " window: " << window << " frequency: " << tau
 				<< " weighted:" << weigthed << " with friend:" << withFriend
 				<< std::endl;
+		int spread;
 		if (weigthed) {
-			withFriend = false;
+
 			if (withFriend) {
 				li.generateFriendshipData(friendfile);
 			}
 			li.FindInflunceWeigthed(window, withFriend, monitor);
-			if (withFriend) {
-				li.findWeigthedSeed(
-						ofile + "WeightedFriend_w" + to_string(window) + "_f"
-								+ to_string(tau), tau, numberOfSeed, alpha,
-						isRelative);
-			} else {
-				li.findWeigthedSeed(
-						ofile + "Weighted_w" + to_string(window) + "_f"
-								+ to_string(tau), tau, numberOfSeed, alpha,
-						isRelative);
+			for (double a : alphaArray) {
+				alpha = a;
+				string keyfile = "";
+				if (withFriend) {
+					keyfile = ofile + "WeightedFriend_w" + to_string(window)
+							+ "_f" + to_string(tau);
+					li.findWeigthedSeed(keyfile, tau, numberOfSeed, alpha,
+							isRelative);
+				} else {
+					keyfile = ofile + "Weighted_w" + to_string(window) + "_f"
+							+ to_string(tau);
+					li.findWeigthedSeed(keyfile, tau, numberOfSeed, alpha,
+							isRelative);
+				}
+
+				for (int seedc : seedArray) {
+					stringstream seedFile;
+					seedFile << keyfile << "_s" << numberOfSeed << "_a" << alpha
+							<< ".keys";
+				//	cout<<seedFile.str()<<endl;
+					spread = li.getWeightedSpread(tau, isRelative,
+							seedFile.str(), seedc);
+					cout << "resultFor: expected spread " << spread
+							<< " for alpha: " << alpha << " seed count "
+							<< seedc << endl;
+				}
 			}
+
 		} else {
 			if (tau > 1) {
 				li.FindInflunceApprox(window, isforward, monitor);
@@ -235,23 +256,31 @@ int main(int argc, char *argv[]) {
 				<< seedfile << " window: " << window << " frequency: " << tau
 				<< std::endl;
 		li.FindInflunceExact(window, withFriend);
-		li.queryExact(tau);
+		li.queryExact(tau, false);
+		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys",
+				numberOfSeed, folder + pathSeperator + seedfile + "_f5.spread");
+	} else if (cmd.compare("spreadWeighted") == 0) {
+		std::cout << "finding spread of " << numberOfSeed << " seed for "
+				<< seedfile << " window: " << window << " frequency: " << tau
+				<< std::endl;
+		li.FindInflunceExact(window, withFriend);
+		li.queryExact(tau, false);
 		li.queryInflunceSet(folder + pathSeperator + seedfile + ".keys",
 				numberOfSeed, folder + pathSeperator + seedfile + "_f5.spread");
 	} else {
 		std::cout << "no command found" << std::endl;
 	}
 //	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
-	//li.FindInflunceExact(window, isforward);
-	//std::this_thread::sleep_for(std::chrono::seconds(100));
-	//li.topK(minFreq, k);
+//li.FindInflunceExact(window, isforward);
+//std::this_thread::sleep_for(std::chrono::seconds(100));
+//li.topK(minFreq, k);
 	/*
 	 li.FindInflunceApprox(window, isforward);
 	 li.clean();
 	 std::this_thread::sleep_for(std::chrono::seconds(100));
 	 li.queryAll();
 	 */
-	//mem = exec("systeminfo | find \"Virtual Memory: In Use:\"");
-	//std::cout << mem << std::endl;
+//mem = exec("systeminfo | find \"Virtual Memory: In Use:\"");
+//std::cout << mem << std::endl;
 	return 0;
 }
