@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 //string file="BrightKi";
 	int window = 100; //hour
 	int bucket = 8;
-	int numberOfSeed = 100;
+	int numberOfSeed = 500;
 
 	double tau;
 	bool withFriend = false;
@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
 	bool weigthed = true;
 	bool isRelative = false;
 	double alpha = 0.9;
-	double alphaArray[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 };
-	int seedArray[] = { 10, 20, 30, 40, 50 };
+	double alphaArray[] = { 0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1,0.2,0.3 };
+	int seedArray[] = { 100,200};
 	string cmd = "seed";
 	string forward = "";
 	string seedfile = "";
@@ -124,11 +124,12 @@ int main(int argc, char *argv[]) {
 	//cout << cmd << endl;
 //	cout << runCommand("systeminfo | find \"Virtual Memory: In Use:\"") << endl;
 //	string folder = "D:\\dataset\\new\\";
-	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
+//	string folder = "D:\\dataset\\new\\" + file + "\\LBSNData\\";
 //	string folder = "D:\\dataset\\new\\NYC\\" + file + "\\";
-//	string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
+	string folder = "/home/aamir/Study/rohit/new/" + file + "/LBSNData/";
 	//string folder = "/home/aamir/Study/rohit/new/synthetic/" + file + "/";
-	string ifile = folder + "checkins.csv";
+	//string ifile = folder + "checkins.csv";
+	string ifile = folder + file+"_1.csv";
 	string ofile = folder + file;
 	string friendfile = folder + "friends.txt";
 	LocationInfluence li(bucket, ifile, ofile, folder);

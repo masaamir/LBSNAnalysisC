@@ -92,6 +92,7 @@ public:
 	string datafile;
 	string outfile;
 	long window = 0;
+	//vector<string> infarray;
 	LocationInfluence(uint8_t b = 7, string file = "", string ofile = "",
 			string folder = "") throw (invalid_argument) {
 
@@ -681,6 +682,14 @@ public:
 
 				weigthedLocationSummary[locationid] = newlocation;
 			}
+			weigthedLocationSummary[locationid].visitor.add(userid.c_str(),
+					userid.length());
+			if (withFriend) {
+				if (friendmap.find(userid) != friendmap.end()) {
+					weigthedLocationSummary[locationid].visitor.merge(
+							friendmap[userid]);
+				}
+			}
 			if (userSummary.find(userid) != userSummary.end()) {
 
 				for (it_type it = userSummary[userid].begin();
@@ -692,14 +701,6 @@ public:
 
 					if ((diff) < window) {
 
-						weigthedLocationSummary[destLoc].visitor.add(
-								userid.c_str(), userid.length());
-						if (withFriend) {
-							if (friendmap.find(userid) != friendmap.end()) {
-								weigthedLocationSummary[destLoc].visitor.merge(
-										friendmap[userid]);
-							}
-						}
 						ithll =
 								weigthedLocationSummary[srcLoc].influenceset.find(
 										destLoc);
@@ -1073,6 +1074,10 @@ public:
 
 					count++;
 				}
+				if (iterator->first == 82626) {
+					cout << "82626 exact : " << it->first << " : " << inf
+							<< " cnt " << count << endl;
+				}
 
 			}
 			rfile << iterator->first << "," << count << "\n";
@@ -1135,7 +1140,7 @@ public:
 	int getWeightedSpread(double tau, bool isrelative, string seedfile,
 			int seedc) {
 		vector<int> seeds = readKeys(seedfile, seedc);
-	//	cout<<seeds[9]<<" "<<seeds[0]<<" seed size"<<seeds.size()<<endl;
+		//	cout<<seeds[9]<<" "<<seeds[0]<<" seed size"<<seeds.size()<<endl;
 		return getWeightedSpread(tau, isrelative, seeds);
 	}
 	int getWeightedSpread(double tau, bool isrelative, vector<int> seed) {
@@ -1198,6 +1203,10 @@ public:
 				if (inf > tau) {
 
 					count++;
+				}
+				if (iterator->first == 82626) {
+					cout << "82626 approx : " << it->first << " : " << inf
+							<< " cnt " << count << endl;
 				}
 
 			}
@@ -1278,6 +1287,7 @@ public:
 			}
 
 		}
+		//writeData(infarray, "D:\\dataset\\New folder\\fs_inf.csv");
 		sort(nodelist.begin(), nodelist.end(), sortByRankWeight);
 		seedlist[0] = nodelist[0].locationid;
 		superl.setoflocations.insert(nodelist[0].locationid);
@@ -1422,6 +1432,11 @@ private:
 				it++) {
 
 			inf = it->second.estimate();
+			//	infarray.push_back(
+			//			to_string(it->first) + ","
+			//					+ to_string(
+			//							weigthedLocationSummary[it->first].visitor.estimate())
+			//					+ "," + to_string(inf) + "\n");
 			if (isrelative) {
 				if (weigthedLocationSummary[it->first].visitor.estimate() > 0) {
 					inf =
@@ -1442,6 +1457,7 @@ private:
 
 		}
 		weight = weight + (1 - alpha) * count;
+
 		return weight;
 	}
 	void cleanup(long checkintime, long window, bool isforward) {
